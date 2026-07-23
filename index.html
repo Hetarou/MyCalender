@@ -1,0 +1,1400 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>じかんわり — スケジュール管理</title>
+<style>
+/* ==========================================================
+   デザイントークン
+   予定=青 / 締切=赤 / 今日=緑。色にはそれぞれ1つだけ意味を持たせている。
+   ========================================================== */
+:root{
+  --paper:#EDEFF1;
+  --ink:#14212B;
+  --ink-soft:#5C6B77;
+  --ink-faint:#93A1AB;
+  --rule:#C9D2D8;
+  --rule-soft:#DFE4E8;
+  --rule-faint:#EBEFF2;
+  --plan:#1F5C8C;      /* 予定・授業 */
+  --plan-bg:#E3ECF3;
+  --due:#C43D2E;       /* 締切だけに使う */
+  --due-bg:#F7E3E0;
+  --today:#0E8F7E;     /* 今日だけに使う */
+
+  --display:"Hiragino Mincho ProN","Yu Mincho",YuMincho,"Noto Serif JP",serif;
+  --body:"Hiragino Sans","Yu Gothic",YuGothic,"Noto Sans JP",system-ui,sans-serif;
+  --data:ui-monospace,"SF Mono",Menlo,"Roboto Mono",monospace;
+
+  --gap:14px;
+  --radius:3px;
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  background:var(--paper);
+  color:var(--ink);
+  font-family:var(--body);
+  font-size:15px;
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
+/* hidden を付けた要素は必ず消す。
+   ブラウザ標準の [hidden]{display:none} は、自分で書いた display 指定
+   （.row{display:grid} など）に負けるので、ここで明示しておく */
+[hidden]{display:none!important}
+:focus-visible{outline:2px solid var(--today);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+.app{max-width:1180px;margin:0 auto;padding:var(--gap);padding-bottom:96px}
+
+/* ---------- ヘッダー ---------- */
+.masthead{
+  display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;
+  padding-bottom:12px;margin-bottom:18px;
+  border-bottom:1px solid var(--ink);
+}
+.masthead h1{
+  font-family:var(--display);
+  font-size:26px;font-weight:600;letter-spacing:.14em;line-height:1;
+}
+.masthead .range{
+  font-family:var(--data);font-size:12px;color:var(--ink-soft);
+  letter-spacing:.06em;padding-bottom:2px;
+}
+.masthead .spacer{flex:1}
+.busy{
+  font-size:11px;letter-spacing:.08em;color:var(--ink-soft);
+  padding-bottom:3px;animation:pulse 1.1s ease-in-out infinite;
+}
+@keyframes pulse{0%,100%{opacity:.35}50%{opacity:1}}
+
+/* 読み込み中：中身を薄くして、上に文字を出す */
+#grid{position:relative;min-height:120px}
+#grid.is-loading > *{opacity:.25}
+#grid.is-loading::after{
+  content:attr(data-loading);position:absolute;inset:0;
+  display:flex;align-items:center;justify-content:center;
+  font-size:12.5px;letter-spacing:.1em;color:var(--ink-soft);
+}
+
+/* まだ保存できていない予定 */
+.ev.unsaved,.bar.unsaved,.chip.unsaved{outline:1px dashed var(--due);outline-offset:-1px}
+
+.pager{display:flex;align-items:center;gap:2px}
+.pager button{
+  width:32px;height:30px;border:1px solid var(--rule);background:#fff;
+  border-radius:var(--radius);font-size:13px;
+}
+.pager button.now{width:auto;padding:0 12px;font-size:12px;letter-spacing:.08em}
+.pager button:hover{border-color:var(--ink)}
+
+.viewtabs{display:flex;border:1px solid var(--ink);border-radius:var(--radius);overflow:hidden}
+.viewtabs button{padding:5px 16px;font-size:13px;letter-spacing:.1em;background:#fff}
+.viewtabs button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+
+/* ---------- レイアウト ---------- */
+.stage{display:grid;grid-template-columns:1fr 244px;gap:22px;align-items:start}
+@media (max-width:860px){
+  .stage{grid-template-columns:1fr;gap:18px}
+  .rail{order:-1}   /* スマホでは締切を一番上に */
+}
+/* 狭い画面では列が潰れるので、横スクロールで幅を確保する */
+@media (max-width:680px){
+  #grid{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .week{min-width:580px}
+}
+
+/* ---------- 週ビュー：時間割グリッド ---------- */
+.week{
+  display:grid;
+  grid-template-columns:34px repeat(7,1fr);
+  border-top:1px solid var(--rule);
+  border-left:1px solid var(--rule);
+  background:#fff;
+}
+.week > *{
+  border-right:1px solid var(--rule);
+  border-bottom:1px solid var(--rule);
+  min-height:0;
+}
+.wd{
+  padding:6px 4px;text-align:center;background:var(--paper);
+  font-size:12px;letter-spacing:.08em;
+}
+.wd .d{font-family:var(--data);font-size:16px;display:block;line-height:1.2}
+.wd.sat{color:var(--plan)}
+.wd.sun{color:var(--due)}
+.wd.is-today{background:var(--today);color:#fff}
+.wd.is-today .d{font-weight:700}
+
+/* ---------- 1時間刻みの時間軸 ---------- */
+.hours{
+  grid-column:1 / -1;
+  display:grid;grid-template-columns:34px repeat(7,1fr);
+  position:relative;
+}
+.tcol{background:var(--paper);position:relative;border-right:1px solid var(--rule)}
+.tlabel{
+  position:absolute;right:4px;transform:translateY(-50%);
+  font-family:var(--data);font-size:10px;color:var(--ink-faint);letter-spacing:0;
+}
+.dcol{position:relative;border-right:1px solid var(--rule);cursor:pointer}
+.dcol:last-child{border-right:none}
+.dcol.is-today{background:#F2FAF8}
+.dcol:hover{background:#F4F7F9}
+.dcol.is-today:hover{background:#E9F6F3}
+
+/* 背景の横線。要素を並べず、CSSの背景で描く（1描画あたり200個以上のDOMが減る）
+   --hour は .hours にJS側から入る（HOUR_PXと必ず一致させるため） */
+.dcol{
+  background-image:
+    linear-gradient(to bottom, transparent calc(50% - 1px), var(--rule-faint) calc(50% - 1px),
+                    var(--rule-faint) 50%, transparent 50%),
+    linear-gradient(to bottom, var(--rule-soft) 0, var(--rule-soft) 1px, transparent 1px);
+  background-size:100% var(--hour), 100% var(--hour);
+  background-repeat:repeat-y;
+}
+
+/* 時間軸の上に置く予定 */
+.ev{
+  position:absolute;border-radius:var(--radius);padding:2px 5px;
+  font-size:11px;line-height:1.3;text-align:left;overflow:hidden;
+  border-left:2px solid;
+}
+.ev .t{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ev .s{display:block;font-family:var(--data);font-size:9.5px;opacity:.8}
+.ev.class{background:var(--plan-bg);color:var(--plan);border-left-color:var(--plan)}
+.ev.event{background:#fff;color:var(--ink);border:1px solid var(--rule);border-left:2px solid var(--ink-soft)}
+.ev:hover{filter:brightness(.97);z-index:5}
+.ev.short{padding-top:0}
+.ev.short .s{display:inline;margin-left:5px}
+.ev.short .t{display:inline}
+
+/* いまの時刻 */
+.nowline{position:absolute;left:0;right:0;height:0;border-top:2px solid var(--today);pointer-events:none;z-index:4}
+.nowline::before{
+  content:'';position:absolute;left:-4px;top:-5px;
+  width:8px;height:8px;border-radius:50%;background:var(--today);
+}
+
+/* コマ・予定チップ */
+.chip{
+  border-radius:var(--radius);padding:4px 5px;font-size:11.5px;line-height:1.35;
+  text-align:left;width:100%;overflow:hidden;
+}
+.chip .t{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chip .s{display:block;font-family:var(--data);font-size:9.5px;opacity:.75}
+.chip.class{background:var(--plan-bg);color:var(--plan);border-left:2px solid var(--plan)}
+.chip.event{background:#fff;color:var(--ink);border:1px solid var(--rule);border-left:2px solid var(--ink-soft)}
+.chip.due{background:var(--due-bg);color:var(--due);border-left:2px solid var(--due)}
+
+/* 日をまたぐ予定・終日の予定を置く帯 */
+.band{
+  grid-column:1 / -1;
+  display:grid;grid-template-columns:34px repeat(7,1fr);
+  grid-auto-rows:20px;min-height:24px;position:relative;
+}
+.band .glabel{
+  grid-column:1;grid-row:1 / -1;background:var(--paper);
+  font-size:9px;color:var(--ink-faint);letter-spacing:.04em;
+  display:flex;align-items:center;justify-content:center;
+  border-right:1px solid var(--rule);
+}
+.band .guide{
+  grid-row:1 / -1;border-right:1px solid var(--rule-soft);cursor:pointer;
+}
+.band .guide:hover{background:#F4F7F9}
+.band .guide:last-of-type{border-right:none}
+
+/* 帯そのもの（週ビュー・月ビュー共通） */
+.bar{
+  height:18px;margin:1px 3px;border-radius:9px;padding:0 8px;
+  font-size:11px;line-height:18px;text-align:left;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  position:relative;z-index:1;
+}
+.bar.event{background:var(--plan);color:#fff}
+.bar.due{background:var(--due);color:#fff}
+.bar:hover{filter:brightness(1.15)}
+.bar.cutL{border-top-left-radius:0;border-bottom-left-radius:0;margin-left:0;padding-left:5px}
+.bar.cutR{border-top-right-radius:0;border-bottom-right-radius:0;margin-right:0;padding-right:5px}
+
+/* ---------- 月ビュー ---------- */
+.month{border-top:1px solid var(--rule);border-left:1px solid var(--rule);background:#fff}
+.mheads{display:grid;grid-template-columns:repeat(7,1fr)}
+.mheads > *{border-right:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+.mweek{position:relative;display:grid;grid-template-columns:repeat(7,1fr)}
+.mweek > .mcell{border-right:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+.mbars{
+  position:absolute;top:24px;left:0;right:0;
+  display:grid;grid-template-columns:repeat(7,1fr);grid-auto-rows:20px;
+  pointer-events:none;
+}
+.mbars .bar{pointer-events:auto}
+.mspace{flex:0 0 auto}
+.mhead{padding:5px;text-align:center;font-size:11px;letter-spacing:.1em;background:var(--paper)}
+.mhead.sat{color:var(--plan)} .mhead.sun{color:var(--due)}
+.mcell{
+  min-height:96px;padding:4px;display:flex;flex-direction:column;gap:2px;cursor:pointer;
+}
+.mcell:hover{background:#F4F7F9}
+.mcell .n{
+  font-family:var(--data);font-size:13px;color:var(--ink-soft);
+  height:18px;display:flex;align-items:center;flex:0 0 auto;
+}
+.mcell.out{background:#F7F8F9}
+.mcell.out .n{color:var(--ink-faint)}
+.mcell.is-today .n{
+  background:var(--today);color:#fff;border-radius:9px;
+  width:22px;justify-content:center;font-weight:700;
+}
+.more{font-size:10px;color:var(--ink-faint);padding-left:2px}
+
+/* ---------- 締切レーン（この画面の主役） ---------- */
+.rail{
+  background:#fff;border:1px solid var(--rule);border-radius:var(--radius);
+  padding:14px 14px 8px;position:sticky;top:14px;
+}
+.rail h2{
+  font-family:var(--display);font-size:15px;font-weight:600;letter-spacing:.18em;
+  padding-bottom:9px;margin-bottom:4px;border-bottom:1px solid var(--ink);
+}
+.due-item{
+  display:flex;gap:11px;align-items:baseline;
+  padding:10px 0;border-bottom:1px solid var(--rule-soft);width:100%;text-align:left;
+}
+.due-item:last-child{border-bottom:none}
+.dn{
+  font-family:var(--data);font-size:19px;font-weight:700;line-height:1;
+  min-width:52px;letter-spacing:-.02em;
+}
+.dn small{font-size:10px;font-weight:400;letter-spacing:.04em}
+.due-item .body{flex:1;min-width:0}
+.due-item .ttl{font-size:13.5px;line-height:1.35;word-break:break-word}
+.due-item .dt{font-family:var(--data);font-size:10.5px;color:var(--ink-faint);letter-spacing:.03em}
+.lv0 .dn{color:var(--due)}                                  /* 今日・明日 */
+.lv1 .dn{color:#D08033}                                     /* 1週間以内 */
+.lv2 .dn{color:var(--ink-soft)}                             /* それ以降 */
+.over .dn{color:var(--due)}
+.over .ttl{text-decoration:line-through;color:var(--ink-faint)}
+.rail .empty{color:var(--ink-faint);font-size:12.5px;padding:16px 0;line-height:1.7}
+
+/* ---------- 追加ボタン ---------- */
+.fab{
+  position:fixed;right:20px;bottom:20px;z-index:20;
+  height:50px;padding:0 22px;border-radius:25px;
+  background:var(--ink);color:var(--paper);
+  font-size:14px;letter-spacing:.1em;
+  box-shadow:0 4px 16px rgba(20,33,43,.28);
+}
+.fab:hover{background:var(--plan)}
+
+/* ---------- 入力シート ---------- */
+dialog{
+  border:none;padding:0;background:transparent;max-width:100%;
+}
+dialog::backdrop{background:rgba(20,33,43,.42)}
+.sheet{
+  background:#fff;border-radius:var(--radius);
+  width:min(430px,calc(100vw - 24px));padding:20px;
+  border-top:3px solid var(--ink);
+}
+.sheet h3{font-family:var(--display);font-size:17px;letter-spacing:.12em;margin-bottom:16px}
+.kinds{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:16px}
+.kinds button{
+  padding:9px 4px;border:1px solid var(--rule);border-radius:var(--radius);
+  font-size:12.5px;background:#fff;
+}
+.kinds button[aria-pressed="true"]{border-color:var(--ink);background:var(--ink);color:#fff}
+.field{margin-bottom:13px}
+.field label{display:block;font-size:11px;letter-spacing:.08em;color:var(--ink-soft);margin-bottom:4px}
+.field input,.field select,.field textarea{
+  width:100%;padding:8px 9px;border:1px solid var(--rule);border-radius:var(--radius);
+  font:inherit;font-size:14px;background:#fff;color:var(--ink);
+}
+.field textarea{resize:vertical;min-height:56px}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:9px}
+.periods{display:grid;grid-template-columns:repeat(6,1fr);gap:5px}
+.periods button{
+  padding:7px 2px;border:1px solid var(--rule);border-radius:var(--radius);
+  font-size:11px;background:#fff;font-family:var(--data);
+}
+.periods button:hover{border-color:var(--ink);background:var(--plan-bg)}
+.hint{font-size:11px;color:var(--ink-faint);line-height:1.5;margin:-4px 0 13px}
+.err{font-size:12px;color:var(--due);line-height:1.5;margin:-4px 0 13px}
+.acts{display:flex;gap:9px;margin-top:19px;align-items:center}
+.acts .spacer{flex:1}
+.acts button{padding:9px 18px;border-radius:var(--radius);font-size:13.5px;letter-spacing:.06em}
+.btn-save{background:var(--ink);color:#fff}
+.btn-save:hover{background:var(--plan)}
+.btn-cancel{border:1px solid var(--rule)}
+.btn-del{color:var(--due);font-size:12.5px}
+
+.warn{
+  background:var(--due-bg);color:var(--due);
+  border-left:3px solid var(--due);border-radius:var(--radius);
+  padding:11px 14px;margin-bottom:16px;font-size:12.5px;line-height:1.6;
+}
+.warn strong{font-weight:700}
+
+/* ---------- フッター ---------- */
+.tools{
+  margin-top:26px;padding-top:12px;border-top:1px solid var(--rule);
+  display:flex;gap:16px;flex-wrap:wrap;font-size:11.5px;color:var(--ink-faint);
+}
+.tools button{text-decoration:underline;font-size:11.5px;color:var(--ink-soft)}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header class="masthead">
+    <h1>じかんわり</h1>
+    <span class="range" id="range"></span>
+    <span class="busy" id="busy" hidden>保存中…</span>
+    <span class="spacer"></span>
+    <div class="pager">
+      <button id="prev" aria-label="前へ">‹</button>
+      <button id="now" class="now">今日</button>
+      <button id="next" aria-label="次へ">›</button>
+    </div>
+    <div class="viewtabs">
+      <button id="tabWeek" aria-pressed="true">週</button>
+      <button id="tabMonth" aria-pressed="false">月</button>
+    </div>
+  </header>
+
+  <p class="warn" id="warn" hidden>
+    <strong>保存できていない。</strong>
+    このページを閉じると入力が消える。下の「データを書き出す」でJSONを保存しておいて。
+  </p>
+
+  <div class="stage">
+    <section id="grid"></section>
+    <aside class="rail">
+      <h2>締切</h2>
+      <div id="rail"></div>
+    </aside>
+  </div>
+
+  <div class="tools">
+    <button id="gsync">Googleカレンダーとつなぐ</button>
+    <span id="gstate"></span>
+    <button id="export">データを書き出す（JSON）</button>
+    <button id="import">データを読み込む</button>
+    <span id="count"></span>
+  </div>
+</div>
+
+<button class="fab" id="add">＋ 追加</button>
+
+<dialog id="dlg">
+  <div class="sheet">
+    <h3 id="dlgTitle">予定を追加</h3>
+
+    <div class="kinds" id="kinds">
+      <button data-kind="class"  aria-pressed="false">授業（毎週）</button>
+      <button data-kind="event"  aria-pressed="true">予定</button>
+      <button data-kind="due"    aria-pressed="false">締切</button>
+    </div>
+
+    <div class="field">
+      <label for="fTitle">タイトル</label>
+      <input id="fTitle" type="text" placeholder="例：統計学 / レポート提出">
+    </div>
+
+    <!-- 授業用：曜日 -->
+    <div class="field" id="classFields" hidden>
+      <label for="fWeekday">曜日</label>
+      <select id="fWeekday">
+        <option value="1">月</option><option value="2">火</option>
+        <option value="3">水</option><option value="4">木</option>
+        <option value="5">金</option><option value="6">土</option>
+        <option value="0">日</option>
+      </select>
+    </div>
+
+    <!-- 授業用：時限を押すと下の時刻が埋まる -->
+    <div class="field" id="periodField" hidden>
+      <label>時限から入れる</label>
+      <div class="periods" id="periodPicks"></div>
+    </div>
+
+    <!-- 予定・締切用：日付 -->
+    <div id="dateFields">
+      <div class="row">
+        <div class="field">
+          <label for="fDate" id="labDate">開始日</label>
+          <input id="fDate" type="date">
+        </div>
+        <div class="field" id="endDateField">
+          <label for="fEndDate">終了日</label>
+          <input id="fEndDate" type="date">
+        </div>
+      </div>
+    </div>
+
+    <!-- 時刻（授業・予定 共通） -->
+    <div class="row" id="timeRow">
+      <div class="field">
+        <label for="fStart" id="labStart">開始時刻</label>
+        <input id="fStart" type="time">
+      </div>
+      <div class="field" id="endTimeField">
+        <label for="fEnd">終了時刻</label>
+        <input id="fEnd" type="time">
+      </div>
+    </div>
+
+    <p class="hint" id="hintSpan">終了日を先の日付にすると、日をまたぐ予定になるよ。</p>
+
+    <!-- 授業用：学期の終わり -->
+    <div class="field" id="termField" hidden>
+      <label for="fTermEnd">いつまで（空なら期限なし）</label>
+      <input id="fTermEnd" type="date">
+    </div>
+
+    <div class="field">
+      <label for="fMemo">メモ</label>
+      <textarea id="fMemo" placeholder="場所、持ち物、提出先など"></textarea>
+    </div>
+
+    <div class="acts">
+      <button class="btn-save" id="save">保存</button>
+      <button class="btn-cancel" id="cancel">やめる</button>
+      <span class="spacer"></span>
+      <button class="btn-del" id="del" hidden>削除</button>
+    </div>
+  </div>
+</dialog>
+
+<script>
+/* ==========================================================
+   1. 設定
+   ========================================================== */
+const CONFIG = {
+  // Google Cloud で作った OAuth クライアントID。
+  // 空のままならこの端末だけの保存（同期なし）で動く。
+  // 入れ方は SETUP.md を見て。
+  googleClientId: '',
+
+  calendarId: 'primary',   // 'primary' = Googleの標準カレンダー
+  scope: 'https://www.googleapis.com/auth/calendar.events',
+};
+
+/* ==========================================================
+   2. 保存先
+   ----------------------------------------------------------
+   保存先は2つあり、どちらも list / upsert / remove の3つを持つ。
+   アプリ本体はどちらを使っているか意識しない。
+
+     LocalBackend  … この端末の中だけ。同期しない
+     GoogleBackend … Googleカレンダーが本体。どの端末からでも同じ予定が見える
+
+   保存先を増やしたいときは、同じ3つの関数を持つオブジェクトを足せばいい。
+   ========================================================== */
+const KEY = 'cal:items';
+const TZ  = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+// 素の保存場所。Claudeのアーティファクト内と、普通のブラウザの両方で動くようにする
+const medium = (typeof window.storage !== 'undefined')
+  ? {
+      async get(k){ try{ const r = await window.storage.get(k); return r ? r.value : null; }catch(e){ return null; } },
+      async set(k,v){ await window.storage.set(k, v); }
+    }
+  : {
+      async get(k){ return localStorage.getItem(k); },
+      async set(k,v){ localStorage.setItem(k, v); }
+    };
+
+/* ---------- この端末だけに保存 ---------- */
+const LocalBackend = {
+  name: 'local',
+  label: 'この端末のみ',
+  async list(){
+    const raw = await medium.get(KEY);
+    return raw ? JSON.parse(raw) : [];
+  },
+  async upsert(it){ await this.flush(); return it; },
+  async remove(id){ await this.flush(); },
+  async flush(){ await medium.set(KEY, JSON.stringify(items)); }
+};
+
+/* ---------- Googleカレンダーに保存 ---------- */
+const GoogleBackend = {
+  name: 'google',
+  label: 'Googleカレンダー',
+  token: null,
+
+  /* --- ログイン --- */
+  async loadGis(){
+    if(window.google?.accounts?.oauth2) return;
+    await new Promise((res, rej) => {
+      const el = document.createElement('script');
+      el.src = 'https://accounts.google.com/gsi/client';
+      el.onload = res;
+      el.onerror = () => rej(new Error('Googleのログイン用スクリプトを読み込めなかった。ネットにつながってる？'));
+      document.head.appendChild(el);
+    });
+  },
+
+  async connect(interactive){
+    if(!CONFIG.googleClientId){
+      throw new Error('CONFIG.googleClientId が空。SETUP.md の手順でクライアントIDを入れて。');
+    }
+    await this.loadGis();
+    this.token = await new Promise((res, rej) => {
+      const client = google.accounts.oauth2.initTokenClient({
+        client_id: CONFIG.googleClientId,
+        scope: CONFIG.scope,
+        callback: r => r.access_token ? res(r.access_token) : rej(new Error('許可されなかった')),
+        error_callback: e => rej(new Error('ログインに失敗した（' + (e.type || '不明') + '）'))
+      });
+      // prompt:'' … 一度許可していれば画面を出さずに通す
+      client.requestAccessToken({ prompt: interactive ? 'consent' : '' });
+    });
+  },
+
+  /* --- APIを叩く --- */
+  async api(path, opts = {}){
+    const r = await fetch('https://www.googleapis.com/calendar/v3' + path, {
+      ...opts,
+      headers: {
+        Authorization: 'Bearer ' + this.token,
+        'Content-Type': 'application/json',
+        ...(opts.headers || {})
+      }
+    });
+    if(r.status === 401){            // トークン切れ。取り直して1回だけやり直す
+      await this.connect(false);
+      return this.api(path, opts);
+    }
+    if(!r.ok){
+      const t = await r.text().catch(() => '');
+      throw new Error(`Googleカレンダーがエラーを返した (${r.status}) ${t.slice(0,120)}`);
+    }
+    return r.status === 204 ? null : r.json();
+  },
+
+  get base(){ return '/calendars/' + encodeURIComponent(CONFIG.calendarId) + '/events'; },
+
+  async list(){
+    // singleEvents=false … くり返し予定を「毎週の授業1件」のまま受け取る。
+    // true にすると1回1回に展開されてしまい、授業の形が崩れる
+    const min = fmt(addDays(new Date(), -400)) + 'T00:00:00Z';
+    const max = fmt(addDays(new Date(),  400)) + 'T00:00:00Z';
+    const out = [];
+    let pageToken = null;
+    do{
+      const q = new URLSearchParams({
+        timeMin: min, timeMax: max,
+        singleEvents: 'false', maxResults: '250',
+        ...(pageToken ? { pageToken } : {})
+      });
+      const j = await this.api(`${this.base}?${q}`);
+      for(const ev of (j.items || [])){
+        const it = fromGoogle(ev);
+        if(it) out.push(it);
+      }
+      pageToken = j.nextPageToken || null;
+    }while(pageToken);
+    return out;
+  },
+
+  async upsert(it){
+    const body = JSON.stringify(toGoogle(it));
+    // idがGoogle由来（20文字以上の英数字）なら更新、そうでなければ新規
+    const isNew = !it._remote;
+    const ev = isNew
+      ? await this.api(this.base, { method:'POST', body })
+      : await this.api(`${this.base}/${encodeURIComponent(it.id)}`, { method:'PATCH', body });
+    it.id = ev.id;
+    it._remote = true;
+    return it;
+  },
+
+  async remove(id){
+    await this.api(`${this.base}/${encodeURIComponent(id)}`, { method:'DELETE' });
+  }
+};
+
+/* ---------- 自前の形 ⇄ Googleの形 ---------- */
+const BYDAY = ['SU','MO','TU','WE','TH','FR','SA'];
+const hhmm  = dt => dt.slice(11,16);                 // '2026-07-23T10:40:00+09:00' → '10:40'
+const isoAt = (dateStr, time) => `${dateStr}T${time}:00`;
+
+// 「次にその曜日が来る日」。授業のくり返し開始日に使う
+function nextWeekdayFrom(weekday){
+  const d = new Date();
+  d.setDate(d.getDate() + ((weekday - d.getDay() + 7) % 7));
+  return fmt(d);
+}
+
+function toGoogle(it){
+  const ev = {
+    summary: it.title,
+    description: it.memo || '',
+    extendedProperties: { private: { kind: it.kind } }
+  };
+
+  if(it.kind === 'class'){
+    const first = nextWeekdayFrom(it.weekday);
+    ev.start = { dateTime: isoAt(first, it.start), timeZone: TZ };
+    ev.end   = { dateTime: isoAt(first, it.end),   timeZone: TZ };
+    let rule = 'RRULE:FREQ=WEEKLY;BYDAY=' + BYDAY[it.weekday];
+    if(it.termEnd) rule += ';UNTIL=' + it.termEnd.replace(/-/g,'') + 'T235900Z';
+    ev.recurrence = [rule];
+    return ev;
+  }
+
+  if(it.kind === 'due'){
+    // 締切は終日イベントにする。時刻は自前の欄に退避しておく
+    // （0分のイベントはGoogleが受け付けないため）
+    ev.start = { date: it.date };
+    ev.end   = { date: fmt(addDays(parse(it.date), 1)) };
+    ev.extendedProperties.private.dueTime = it.start || '';
+    return ev;
+  }
+
+  if(it.start){
+    ev.start = { dateTime: isoAt(it.date, it.start), timeZone: TZ };
+    ev.end   = { dateTime: isoAt(endOf(it), it.end || it.start), timeZone: TZ };
+  }else{
+    // 終日。Googleの end は「終わった翌日」を指す仕様なので1日足す
+    ev.start = { date: it.date };
+    ev.end   = { date: fmt(addDays(parse(endOf(it)), 1)) };
+  }
+  return ev;
+}
+
+function fromGoogle(ev){
+  if(ev.status === 'cancelled') return null;
+  const priv = ev.extendedProperties?.private || {};
+  const base = {
+    id: ev.id, _remote: true,
+    title: ev.summary || '(無題)',
+    memo: ev.description || ''
+  };
+
+  // くり返し → 授業
+  if(ev.recurrence?.length){
+    const rule  = ev.recurrence.find(r => r.startsWith('RRULE')) || '';
+    if(!/FREQ=WEEKLY/.test(rule)) return null;    // 毎週以外は扱えない
+    const by    = /BYDAY=([A-Z,]+)/.exec(rule);
+    const until = /UNTIL=(\d{8})/.exec(rule);
+    const wd    = by ? BYDAY.indexOf(by[1].split(',')[0]) : parse(ev.start.dateTime.slice(0,10)).getDay();
+    return { ...base, kind:'class', weekday: wd,
+      start: hhmm(ev.start.dateTime), end: hhmm(ev.end.dateTime),
+      termEnd: until ? `${until[1].slice(0,4)}-${until[1].slice(4,6)}-${until[1].slice(6,8)}` : null };
+  }
+
+  // 終日
+  if(ev.start.date){
+    const last = fmt(addDays(parse(ev.end.date), -1));   // Googleのendは翌日なので戻す
+    if(priv.kind === 'due'){
+      return { ...base, kind:'due', date: ev.start.date, endDate: ev.start.date,
+               start: priv.dueTime || '', end:'' };
+    }
+    return { ...base, kind:'event', date: ev.start.date, endDate: last, start:'', end:'' };
+  }
+
+  // 時刻つき
+  return { ...base, kind: priv.kind === 'due' ? 'due' : 'event',
+    date: ev.start.dateTime.slice(0,10),
+    endDate: ev.end.dateTime.slice(0,10),
+    start: hhmm(ev.start.dateTime),
+    end: hhmm(ev.end.dateTime) };
+}
+
+/* ---------- いま使っている保存先 ---------- */
+let Backend = LocalBackend;
+
+function showWarn(msg){
+  const el = document.getElementById('warn');
+  if(!el) return;
+  el.hidden = !msg;
+  if(msg) el.innerHTML = msg;
+}
+
+function showBackend(){
+  const el = document.getElementById('gstate');
+  if(el) el.textContent = '保存先：' + Backend.label;
+  const btn = document.getElementById('gsync');
+  if(btn) btn.textContent = Backend.name === 'google'
+    ? 'Googleカレンダーを切り離す' : 'Googleカレンダーとつなぐ';
+}
+
+/* ==========================================================
+   2. 時間軸の設定 — 自分の生活に合わせて書き換えてね
+   ========================================================== */
+const DAY_START = 7;    // 週ビューで何時から表示するか
+const DAY_END   = 24;   // 何時まで表示するか（24 = 深夜0時）
+const HOUR_PX   = 44;   // 1時間ぶんの高さ(px)。大きくすると余裕のある表示になる
+
+// 「2限」を押したときに入る時刻。自分の大学の時間割に合わせて書き換えてね
+const PERIODS = [
+  {n:1, s:'09:00', e:'10:30'},
+  {n:2, s:'10:40', e:'12:10'},
+  {n:3, s:'13:00', e:'14:30'},
+  {n:4, s:'14:40', e:'16:10'},
+  {n:5, s:'16:20', e:'17:50'},
+  {n:6, s:'18:00', e:'19:30'},
+];
+
+/* ==========================================================
+   3. データの形
+   ----------------------------------------------------------
+   { id, kind:'class'|'event'|'due', title, memo,
+     weekday, termEnd,                  // class のみ
+     date, endDate,                     // event / due のみ
+     start, end }                       // 全種類：'HH:MM'
+
+   授業も実時刻(start/end)で持つ。時限番号では持たない。
+   （フォームの「時限」ボタンは、その時刻を入れるための入力補助でしかない）
+   古いデータにある period は読み込み時に start/end へ変換される。
+
+   date    = 開始日, endDate = 終了日（同じなら1日で終わる予定）
+   endDate が無い古いデータは date と同じ扱いになるので、
+   前のバージョンで入れた予定もそのまま使えるよ。
+
+   ※ 将来 Google カレンダーと繋ぐときの対応：
+     title → summary / memo → description
+     date+start   → start.dateTime
+     endDate+end  → end.dateTime      ← 日またぎもこれで素直に表せる
+     class → recurrence の RRULE:FREQ=WEEKLY;BYDAY=... に変換
+   ========================================================== */
+let items = [];
+let state = { view:'week', cursor:new Date() };
+
+/* ---------- 日付ユーティリティ ---------- */
+const WD = ['日','月','火','水','木','金','土'];
+const pad = n => String(n).padStart(2,'0');
+const fmt = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const parse = s => { const [y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d); };
+const addDays = (d,n) => { const x=new Date(d); x.setDate(x.getDate()+n); return x; };
+const today = () => fmt(new Date());
+function monday(d){ const x=new Date(d); const w=x.getDay(); x.setDate(x.getDate()-((w+6)%7)); x.setHours(0,0,0,0); return x; }
+function diffDays(a,b){ return Math.round((parse(a)-parse(b))/86400000); }
+const esc = s => String(s??'').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+
+/* ---------- 期間まわり ---------- */
+const endOf   = it => it.endDate || it.date;      // 終了日（未設定なら開始日と同じ）
+const isMulti = it => endOf(it) !== it.date;      // 日をまたぐ予定か
+const covers  = (it, ds) => ds >= it.date && ds <= endOf(it);
+
+/* ---------- その日に出るものを集める ---------- */
+function itemsOn(dateStr){
+  const w = parse(dateStr).getDay();
+  return items.filter(it => {
+    if(it.kind === 'class'){
+      if(it.weekday !== w) return false;
+      if(it.termEnd && dateStr > it.termEnd) return false;
+      return true;
+    }
+    if(it.kind === 'due') return it.date === dateStr;
+    return covers(it, dateStr);            // 期間内なら毎日出る
+  });
+}
+
+/* ---------- 帯にする予定を選ぶ ----------
+   帯に行くもの：日をまたぐ予定 / 時刻なしの予定 / 締切
+   時限グリッドに残るもの：その日で終わる、時刻つきの予定           */
+function barItems(cols){
+  return items.filter(it => {
+    if(it.kind === 'class') return false;
+    if(endOf(it) < cols[0] || it.date > cols[6]) return false;   // この週と重ならない
+    return it.kind === 'due' || isMulti(it) || !it.start;
+  });
+}
+
+/* ---------- 帯の段（レーン）を決める ----------
+   重なる帯どうしが同じ段に来ないように、上から順に空いてる段へ置く */
+function layoutBand(list, cols){
+  const sorted = [...list].sort((a,b) =>
+    a.date.localeCompare(b.date) || endOf(b).localeCompare(endOf(a)));
+  const lanes = [];        // lanes[i] = その段に置いた [i0,i1] の一覧
+  const placed = [];
+  for(const it of sorted){
+    let i0 = diffDays(it.date, cols[0]);
+    let i1 = diffDays(endOf(it), cols[0]);
+    const cutL = i0 < 0, cutR = i1 > 6;      // 週をはみ出してるか
+    i0 = Math.max(0, i0); i1 = Math.min(6, i1);
+    let lane = 0;
+    while(lanes[lane] && lanes[lane].some(r => !(i1 < r[0] || i0 > r[1]))) lane++;
+    (lanes[lane] = lanes[lane] || []).push([i0, i1]);
+    placed.push({it, i0, i1, lane, cutL, cutR});
+  }
+  return { placed, lanes: lanes.length };
+}
+
+/* ---------- 帯1本のHTML ---------- */
+function bar(p, colOffset){
+  const cls = ['bar', p.it.kind, p.cutL?'cutL':'', p.cutR?'cutR':'', p.it._unsaved?'unsaved':''].join(' ');
+  const label = (p.it.start && !p.cutL) ? `${p.it.start} ${p.it.title}` : p.it.title;
+  return `<button class="${cls}" data-id="${p.it.id}"
+    style="grid-column:${p.i0 + 1 + colOffset} / span ${p.i1 - p.i0 + 1};grid-row:${p.lane + 1}"
+    >${esc(label)}</button>`;
+}
+
+/* ==========================================================
+   4. 描画
+   ========================================================== */
+function render(){
+  document.getElementById('tabWeek').setAttribute('aria-pressed', state.view==='week');
+  document.getElementById('tabMonth').setAttribute('aria-pressed', state.view==='month');
+  state.view === 'week' ? renderWeek() : renderMonth();
+  renderRail();
+  document.getElementById('count').textContent = `登録数 ${items.length} 件`;
+}
+
+function renderWeek(){
+  const mon = monday(state.cursor);
+  const days = Array.from({length:7}, (_,i) => addDays(mon,i));
+  const cols = days.map(fmt);
+  const sun = days[6];
+  document.getElementById('range').textContent =
+    `${mon.getFullYear()}.${pad(mon.getMonth()+1)}.${pad(mon.getDate())} — ${pad(sun.getMonth()+1)}.${pad(sun.getDate())}`;
+
+  let h = '<div class="week">';
+
+  // 曜日ヘッダー
+  h += '<div class="wd"></div>';
+  for(const d of days){
+    const ds = fmt(d), w = d.getDay();
+    const cls = ['wd', w===6?'sat':'', w===0?'sun':'', ds===today()?'is-today':''].join(' ');
+    h += `<div class="${cls}">${WD[w]}<span class="d">${d.getDate()}</span></div>`;
+  }
+
+  // 帯：日をまたぐ予定・時刻なしの予定・締切
+  const { placed, lanes } = layoutBand(barItems(cols), cols);
+  h += `<div class="band" style="grid-template-rows:repeat(${Math.max(1, lanes)},20px)">
+          <div class="glabel">終日</div>`;
+  cols.forEach((ds, i) => {
+    h += `<div class="guide" style="grid-column:${i+2}" data-date="${ds}"></div>`;
+  });
+  for(const p of placed) h += bar(p, 1);   // 1列目は時刻ラベルなので1つずらす
+  h += '</div>';
+
+  // 時間軸：1時間ごとの目盛りの上に、時刻つきの予定を置く
+  const H = (DAY_END - DAY_START) * HOUR_PX;
+  h += `<div class="hours" style="height:${H}px;--hour:${HOUR_PX}px">`;
+
+  h += '<div class="tcol">';
+  for(let hh = DAY_START; hh <= DAY_END; hh++){
+    const y = (hh - DAY_START) * HOUR_PX;
+    const first = hh === DAY_START;
+    h += `<div class="tlabel" style="top:${y}px${first ? ';transform:none' : ''}">${hh % 24}</div>`;
+  }
+  h += '</div>';
+
+  const nowMin = new Date().getHours()*60 + new Date().getMinutes();
+  for(const d of days){
+    const ds = fmt(d);
+    const timed = itemsOn(ds).filter(it =>
+      it.kind !== 'due' && it.start && !isMulti(it));
+    h += `<div class="dcol ${ds===today()?'is-today':''}" data-date="${ds}">`;
+    for(const ev of layoutDay(timed)) h += evHtml(ev);
+    if(ds === today() && nowMin >= DAY_START*60 && nowMin <= DAY_END*60){
+      h += `<div class="nowline" style="top:${minTop(nowMin)}px"></div>`;
+    }
+    h += '</div>';
+  }
+  h += '</div>';
+
+  h += '</div>';
+  document.getElementById('grid').innerHTML = h;
+}
+
+/* ==========================================================
+   時間軸まわり
+   ========================================================== */
+const toMin  = t => { const [h,m] = t.split(':').map(Number); return h*60 + m; };
+const minTop = m => (m - DAY_START*60) / 60 * HOUR_PX;
+const clamp  = (v,lo,hi) => Math.max(lo, Math.min(hi, v));
+
+/* その日の時刻つき予定を、重なりを避けて左右に並べる。
+   重なりの「かたまり」ごとに列数を数えて、かたまり内で幅を分け合う。 */
+function layoutDay(list){
+  const evs = list.map(it => {
+    const s = toMin(it.start);
+    return { it, s, e: Math.max(s + 15, it.end ? toMin(it.end) : s + 60) };
+  }).sort((a,b) => a.s - b.s || b.e - a.e);
+
+  const out = [];
+  let cluster = [], clusterEnd = -1;
+
+  const flush = () => {
+    if(!cluster.length) return;
+    const colEnd = [];                       // 各列が何分まで埋まってるか
+    for(const ev of cluster){
+      let c = 0;
+      while(colEnd[c] !== undefined && colEnd[c] > ev.s) c++;
+      colEnd[c] = ev.e;
+      ev.col = c;
+    }
+    for(const ev of cluster){ ev.cols = colEnd.length; out.push(ev); }
+    cluster = []; clusterEnd = -1;
+  };
+
+  for(const ev of evs){
+    if(cluster.length && ev.s >= clusterEnd) flush();   // 重ならないので別のかたまり
+    cluster.push(ev);
+    clusterEnd = Math.max(clusterEnd, ev.e);
+  }
+  flush();
+  return out;
+}
+
+/* 時間軸に置く予定1件のHTML。
+   表示範囲(DAY_START〜DAY_END)からはみ出す分は端に寄せて、必ず見える・押せる状態にする */
+function evHtml(ev){
+  const LO = DAY_START*60, HI = DAY_END*60;
+  const s = clamp(ev.s, LO, HI - 15);
+  const e = clamp(ev.e, s + 15, HI);
+  const top = minTop(s);
+  const hgt = (e - s) / 60 * HOUR_PX - 2;
+  const w   = 100 / ev.cols;
+  const time = ev.it.end ? `${ev.it.start}–${ev.it.end}` : ev.it.start;
+  return `<button class="ev ${ev.it.kind}${hgt < 32 ? ' short' : ''}${ev.it._unsaved ? ' unsaved' : ''}" data-id="${ev.it.id}"
+    style="top:${top}px;height:${hgt}px;left:calc(${ev.col*w}% + 1px);width:calc(${w}% - 3px)"
+    ><span class="t">${esc(ev.it.title)}</span><span class="s">${esc(time)}</span></button>`;
+}
+
+function chip(it){
+  const sub = it.kind === 'due' ? (it.start ? esc(it.start) : '締切')
+            : (it.start ? esc(it.start) : '');
+  return `<button class="chip ${it.kind}${it._unsaved ? ' unsaved' : ''}" data-id="${it.id}">
+    <span class="t">${esc(it.title)}</span>
+    ${sub ? `<span class="s">${sub}</span>` : ''}
+  </button>`;
+}
+
+function renderMonth(){
+  const c = state.cursor;
+  const first = new Date(c.getFullYear(), c.getMonth(), 1);
+  document.getElementById('range').textContent = `${first.getFullYear()}年 ${first.getMonth()+1}月`;
+  const start = monday(first);
+
+  let h = '<div class="month"><div class="mheads">';
+  for(let i=0;i<7;i++){
+    const w = (i+1)%7;
+    h += `<div class="mhead ${w===6?'sat':''} ${w===0?'sun':''}">${WD[w]}</div>`;
+  }
+  h += '</div>';
+
+  // 1週間ずつ行を作り、その行の中で帯を横に伸ばす
+  for(let wk=0; wk<6; wk++){
+    const days = Array.from({length:7}, (_,i) => addDays(start, wk*7+i));
+    const cols = days.map(fmt);
+    const { placed, lanes } = layoutBand(barItems(cols), cols);
+
+    h += '<div class="mweek">';
+    for(const d of days){
+      const ds = fmt(d), out = d.getMonth() !== c.getMonth();
+      // 帯に出ないもの（授業・その日で終わる時刻つきの予定）だけセル内に出す
+      const solo = itemsOn(ds).filter(it =>
+        it.kind === 'class' || (it.kind === 'event' && !isMulti(it) && it.start));
+      h += `<div class="mcell ${out?'out':''} ${ds===today()?'is-today':''}" data-date="${ds}">
+              <span class="n">${d.getDate()}</span>
+              <div class="mspace" style="height:${lanes*20}px"></div>`;
+      for(const it of solo.slice(0,2)) h += chip(it);
+      if(solo.length > 2) h += `<span class="more">ほか ${solo.length-2}</span>`;
+      h += '</div>';
+    }
+    h += `<div class="mbars" style="grid-template-rows:repeat(${Math.max(1, lanes)},20px)">`;
+    for(const p of placed) h += bar(p, 0);
+    h += '</div></div>';
+  }
+
+  h += '</div>';
+  document.getElementById('grid').innerHTML = h;
+}
+
+function renderRail(){
+  const dues = items.filter(i => i.kind==='due')
+                    .sort((a,b) => a.date.localeCompare(b.date));
+  const el = document.getElementById('rail');
+
+  if(!dues.length){
+    el.innerHTML = '<p class="empty">まだ締切は登録されてないよ。<br>「＋ 追加」から「締切」を選んで登録してみて。</p>';
+    return;
+  }
+
+  el.innerHTML = dues.map(it => {
+    const n = diffDays(it.date, today());
+    const lv = n < 0 ? 'over' : n <= 1 ? 'lv0' : n <= 7 ? 'lv1' : 'lv2';
+    const label = n < 0 ? `<small>超過</small>` : n === 0 ? '今日' : `D-${n}`;
+    const md = `${parse(it.date).getMonth()+1}/${parse(it.date).getDate()} (${WD[parse(it.date).getDay()]})`;
+    return `<button class="due-item ${lv}" data-id="${it.id}">
+      <span class="dn">${label}</span>
+      <span class="body">
+        <span class="ttl">${esc(it.title)}</span>
+        <span class="dt">${md}${it.start ? ' ' + esc(it.start) : ''}</span>
+      </span>
+    </button>`;
+  }).join('');
+
+}
+
+/* クリックの受け口は #grid と #rail に1つずつだけ置く。
+   描画のたびに要素へ貼り直していたのをやめた（再描画が重くなる原因だった） */
+function initClicks(){
+  document.getElementById('grid').addEventListener('click', e => {
+    // 既存の予定 → 編集
+    const hit = e.target.closest('.chip, .bar, .ev');
+    if(hit){ openSheet(items.find(i => i.id === hit.dataset.id)); return; }
+
+    // 時間軸の空きスペース → 押した高さの時刻で新規作成（30分単位に丸める）
+    const col = e.target.closest('.dcol');
+    if(col){
+      const y   = e.clientY - col.getBoundingClientRect().top;
+      const raw = DAY_START*60 + Math.round(y / HOUR_PX * 2) * 30;
+      const st  = clamp(raw, DAY_START*60, DAY_END*60 - 60);
+      const en  = Math.min(st + 60, 23*60 + 59);
+      const hhmm = m => `${pad(Math.floor(m/60))}:${pad(m%60)}`;
+      openSheet(null, col.dataset.date, hhmm(st), hhmm(en));
+      return;
+    }
+
+    // 帯のガイド・月のセル → その日で新規作成
+    const cell = e.target.closest('.guide, .mcell');
+    if(cell) openSheet(null, cell.dataset.date);
+  });
+
+  document.getElementById('rail').addEventListener('click', e => {
+    const hit = e.target.closest('[data-id]');
+    if(hit) openSheet(items.find(i => i.id === hit.dataset.id));
+  });
+}
+
+/* ==========================================================
+   書き込み中の表示
+   ----------------------------------------------------------
+   保存は画面更新を待たせずに裏で走らせる。走っている間だけ「保存中…」を出し、
+   失敗したら警告を出して、その予定に破線をつける
+   ========================================================== */
+let writing = 0;
+function beginWrite(){ writing++; syncBusy(); }
+function endWrite(){ writing = Math.max(0, writing - 1); syncBusy(); }
+function syncBusy(){
+  const el = document.getElementById('busy');
+  if(el) el.hidden = writing === 0;
+}
+
+function persist(it){
+  const before = it.id;
+  delete it._unsaved;
+  beginWrite();
+  Backend.upsert(it)
+    .then(() => {
+      showWarn(null);
+      if(it.id !== before) render();   // Google側の本物のidに変わったときだけ描き直す
+    })
+    .catch(err => {
+      it._unsaved = true;
+      showWarn('<strong>保存できなかった。</strong> ' + esc(err.message) +
+               '（この予定は破線で表示される）');
+      render();
+    })
+    .finally(endWrite);
+}
+
+/* ==========================================================
+   5. 入力シート
+   ========================================================== */
+const dlg = document.getElementById('dlg');
+let editing = null;
+let kind = 'event';
+
+// 「時限」ボタンを並べる。押すと開始・終了時刻が埋まる（ただの入力補助）
+const picks = document.getElementById('periodPicks');
+picks.innerHTML = PERIODS.map(p =>
+  `<button type="button" data-p="${p.n}" title="${p.s}〜${p.e}">${p.n}限</button>`).join('');
+picks.addEventListener('click', e => {
+  const b = e.target.closest('button'); if(!b) return;
+  const p = PERIODS.find(x => x.n === Number(b.dataset.p)); if(!p) return;
+  document.getElementById('fStart').value = p.s;
+  document.getElementById('fEnd').value   = p.e;
+});
+
+function setKind(k){
+  kind = k;
+  document.querySelectorAll('#kinds button').forEach(b =>
+    b.setAttribute('aria-pressed', b.dataset.kind === k));
+  // 授業だけに出す欄
+  document.getElementById('classFields').hidden  = (k !== 'class');
+  document.getElementById('periodField').hidden  = (k !== 'class');
+  document.getElementById('termField').hidden    = (k !== 'class');
+  // 日付は予定・締切だけ
+  document.getElementById('dateFields').hidden   = (k === 'class');
+  // 締切は「その一点」なので終了日・終了時刻は出さない
+  document.getElementById('endDateField').hidden = (k === 'due');
+  document.getElementById('endTimeField').hidden = (k === 'due');
+  document.getElementById('hintSpan').hidden     = (k !== 'event');
+  document.getElementById('labDate').textContent  = (k === 'due') ? '締切日' : '開始日';
+  document.getElementById('labStart').textContent = (k === 'due') ? '時刻（任意）' : '開始時刻';
+}
+
+function showErr(msg){
+  const h = document.getElementById('hintSpan');
+  h.className = 'err'; h.textContent = msg; h.hidden = false;
+}
+function resetHint(){
+  const h = document.getElementById('hintSpan');
+  h.className = 'hint';
+  h.textContent = '終了日を先の日付にすると、日をまたぐ予定になるよ。';
+}
+document.querySelectorAll('#kinds button').forEach(b =>
+  b.addEventListener('click', () => setKind(b.dataset.kind)));
+
+function openSheet(item, presetDate, presetStart, presetEnd){
+  editing = item || null;
+  document.getElementById('dlgTitle').textContent = item ? '編集' : '追加';
+  document.getElementById('del').hidden = !item;
+
+  setKind(item ? item.kind : 'event');
+  resetHint();
+  document.getElementById('fTitle').value   = item?.title   || '';
+  document.getElementById('fMemo').value    = item?.memo    || '';
+  document.getElementById('fWeekday').value = item?.weekday ?? (presetDate ? parse(presetDate).getDay() : 1);
+  document.getElementById('fTermEnd').value = item?.termEnd || '';
+  document.getElementById('fDate').value    = item?.date    || presetDate || today();
+  document.getElementById('fEndDate').value = (item && item.kind !== 'class')
+                                              ? endOf(item) : (presetDate || today());
+  document.getElementById('fStart').value   = item?.start   || presetStart || '';
+  document.getElementById('fEnd').value     = item?.end     || presetEnd   || '';
+
+  dlg.showModal();
+  document.getElementById('fTitle').focus();
+}
+
+document.getElementById('save').addEventListener('click', async () => {
+  const title = document.getElementById('fTitle').value.trim();
+  if(!title){ document.getElementById('fTitle').focus(); return; }
+
+  const base = { title, memo: document.getElementById('fMemo').value.trim(), kind };
+  let data;
+
+  if(kind === 'class'){
+    const st = document.getElementById('fStart').value;
+    const en = document.getElementById('fEnd').value;
+    if(!st || !en){
+      showErr('授業の開始時刻と終了時刻を入れてね。「時限から入れる」のボタンでも埋まるよ。'); return;
+    }
+    if(en <= st){
+      showErr('終了時刻が開始時刻より後になるようにしてね。'); return;
+    }
+    data = { ...base,
+      weekday: Number(document.getElementById('fWeekday').value),
+      start: st, end: en,
+      termEnd: document.getElementById('fTermEnd').value || null };
+  }else{
+    const d  = document.getElementById('fDate').value;
+    const ed = (kind === 'due') ? d : (document.getElementById('fEndDate').value || d);
+    const st = document.getElementById('fStart').value;
+    const en = (kind === 'due') ? '' : document.getElementById('fEnd').value;
+
+    if(!d){ showErr('日付を入れてね。'); return; }
+    if(ed < d){
+      showErr('終了日が開始日より前になってる。終了日を開始日以降にしてね。'); return;
+    }
+    if(ed === d && st && en && en < st){
+      showErr('終了時刻が開始時刻より前になってる。日をまたぐ予定なら、終了日を翌日にしてね。'); return;
+    }
+    data = { ...base, date:d, endDate:ed, start:st, end:en };
+  }
+
+  let target;
+  if(editing){
+    Object.assign(editing, data, { id: editing.id });
+    target = editing;
+  }else{
+    target = { id: uid(), ...data };
+    items.push(target);
+  }
+
+  // 画面を先に更新して、書き込みは裏で走らせる。
+  // 待ってから閉じていたので、保存のたびに固まって見えていた
+  dlg.close();
+  render();
+  persist(target);
+});
+
+document.getElementById('del').addEventListener('click', () => {
+  if(!editing) return;
+  const gone = editing;
+  items = items.filter(i => i.id !== gone.id);
+  dlg.close();
+  render();
+
+  beginWrite();
+  Backend.remove(gone.id)
+    .then(() => showWarn(null))
+    .catch(err => {
+      items.push(gone);              // 消せなかったので戻す
+      showWarn('<strong>削除できなかった。</strong> ' + esc(err.message));
+      render();
+    })
+    .finally(endWrite);
+});
+
+document.getElementById('cancel').addEventListener('click', () => dlg.close());
+
+/* ==========================================================
+   6. ナビゲーション
+   ========================================================== */
+document.getElementById('add').addEventListener('click', () => openSheet(null, today()));
+document.getElementById('now').addEventListener('click', () => { state.cursor = new Date(); render(); });
+document.getElementById('prev').addEventListener('click', () => shift(-1));
+document.getElementById('next').addEventListener('click', () => shift(1));
+function shift(n){
+  state.cursor = state.view === 'week'
+    ? addDays(state.cursor, 7*n)
+    : new Date(state.cursor.getFullYear(), state.cursor.getMonth()+n, 1);
+  render();
+}
+document.getElementById('tabWeek').addEventListener('click', () => { state.view='week'; render(); });
+document.getElementById('tabMonth').addEventListener('click', () => { state.view='month'; render(); });
+
+/* ==========================================================
+   7. データの持ち出し／持ち込み
+   （別のPC・別の環境に移すときや、バックアップ用）
+   ========================================================== */
+document.getElementById('export').addEventListener('click', () => {
+  // _remote / _unsaved は内部用なので書き出さない
+  const clean = items.map(it =>
+    Object.fromEntries(Object.entries(it).filter(([k]) => !k.startsWith('_'))));
+  const blob = new Blob([JSON.stringify(clean, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `schedule-${today()}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+
+document.getElementById('import').addEventListener('click', () => {
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'application/json';
+  inp.addEventListener('change', async () => {
+    const file = inp.files[0]; if(!file) return;
+    try{
+      const parsed = JSON.parse(await file.text());
+      if(!Array.isArray(parsed)) throw new Error('形式が違う');
+      items = parsed.map(it => { const c = {...it}; delete c._remote; return c; });
+      if(Backend.name === 'google'){
+        // Google側にも1件ずつ登録し直す
+        for(const it of items) await Backend.upsert(it);
+      }else{
+        await Backend.flush();
+      }
+      render();
+    }catch(e){
+      alert('読み込めなかった：' + e.message);
+    }
+  });
+  inp.click();
+});
+
+/* ==========================================================
+   8. 起動
+   ========================================================== */
+/* 古いデータの手当て：授業が時限番号(period)しか持っていなければ、
+   PERIODS を引いて実時刻(start/end)に変換する。1度変換すればそのまま残る */
+function migrate(list){
+  let changed = false;
+  const out = list.map(it => {
+    if(it.kind === 'class' && !it.start && it.period){
+      const p = PERIODS.find(x => x.n === it.period);
+      if(p){ changed = true; return { ...it, start:p.s, end:p.e }; }
+    }
+    return it;
+  });
+  return { out, changed };
+}
+
+/* 保存先を切り替えて、そこから読み直す */
+function setLoading(on, msg){
+  const el = document.getElementById('grid');
+  el.dataset.loading = msg || '読み込み中…';
+  el.classList.toggle('is-loading', on);
+}
+
+async function useBackend(be){
+  Backend = be;
+  showBackend();
+  setLoading(true, be.name === 'google' ? 'Googleカレンダーから読み込み中…' : '読み込み中…');
+  try{
+    const { out, changed } = migrate(await Backend.list());
+    items = out;
+    if(changed && Backend.name === 'local') await Backend.flush();
+  }finally{
+    setLoading(false);
+  }
+  render();
+}
+
+document.getElementById('gsync').addEventListener('click', async () => {
+  if(Backend.name === 'google'){
+    await medium.set('cal:backend', 'local');
+    await useBackend(LocalBackend);
+    showWarn('ローカル保存に戻した。Googleカレンダー側の予定はそのまま残ってる。');
+    return;
+  }
+  try{
+    showWarn('Googleカレンダーにつないでる…');
+    await GoogleBackend.connect(true);
+    await medium.set('cal:backend', 'google');
+    await useBackend(GoogleBackend);
+    showWarn(null);
+  }catch(err){
+    showWarn('<strong>つなげなかった。</strong> ' + esc(err.message));
+  }
+});
+
+(async function init(){
+  initClicks();                      // クリックの受け口は起動時に1回だけ
+
+  // 前回Googleにつないでいたら、画面を出さずに復帰を試みる
+  const prefer = await medium.get('cal:backend');
+  if(prefer === 'google' && CONFIG.googleClientId){
+    try{
+      await GoogleBackend.connect(false);
+      await useBackend(GoogleBackend);
+      return;
+    }catch(err){
+      showWarn('<strong>Googleカレンダーにつながらなかった。</strong> ' +
+               'この端末の保存で表示してる。上の「Googleカレンダーとつなぐ」を押すと入り直せる。');
+    }
+  }
+
+  await useBackend(LocalBackend);
+
+  // ローカルで初回のときだけサンプルを入れておく（消してOK）
+  // ※ここに自分の本当の授業名・教室・バイト先を書かないこと。
+  //   リポジトリを公開すると一緒に公開される。予定は画面から入力する
+  if(Backend.name === 'local' && items.length === 0){
+    const t = new Date();
+    items = [
+      {id:uid(), kind:'class', title:'統計学', memo:'3号館 201',
+       weekday:1, start:'10:40', end:'12:10', termEnd:null},
+      {id:uid(), kind:'class', title:'論理回路', memo:'工学部棟 A-12',
+       weekday:3, start:'09:00', end:'10:30', termEnd:null},
+      {id:uid(), kind:'due',   title:'統計学レポート', memo:'PDFで提出',
+       date:fmt(addDays(t,3)), endDate:fmt(addDays(t,3)), start:'23:59', end:''},
+      {id:uid(), kind:'event', title:'バイト', memo:'',
+       date:fmt(addDays(t,1)), endDate:fmt(addDays(t,1)), start:'17:00', end:'21:00'},
+      {id:uid(), kind:'event', title:'合宿', memo:'日をまたぐ予定はこう出るよ',
+       date:fmt(addDays(t,5)), endDate:fmt(addDays(t,7)), start:'09:00', end:'15:00'},
+    ];
+    await Backend.flush();
+    render();
+  }
+})();
+</script>
+</body>
+</html>
