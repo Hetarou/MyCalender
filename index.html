@@ -4,10 +4,23 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>じかんわり — スケジュール管理</title>
+
+<!-- ホーム画面／デスクトップにアプリとして入れるための設定。
+     manifest.json とアイコンが同じ場所に無いと入れられないが、
+     無くてもページ自体は普通に動く（機能の追加であって前提ではない） -->
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#14212B">
+
+<!-- iPhone は manifest を見ないので個別に指定する -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="じかんわり">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<link rel="icon" href="./icon-192.png" type="image/png">
 <style>
 /* ==========================================================
    デザイントークン
-   予定=青 / 締切=赤 / 今日=緑。色にはそれぞれ1つだけ意味を持たせている。
+   予定=青 / 期限=赤 / 今日・完了=緑。色にはそれぞれ1つだけ意味を持たせている。
    ========================================================== */
 :root{
   --paper:#EDEFF1;
@@ -49,7 +62,13 @@ button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
 :focus-visible{outline:2px solid var(--today);outline-offset:2px}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 
-.app{max-width:1180px;margin:0 auto;padding:var(--gap);padding-bottom:96px}
+.app{
+  max-width:1180px;margin:0 auto;padding:var(--gap);padding-bottom:96px;
+  /* ホーム画面から全画面で開いたとき、ノッチやホームバーに隠れないようにする */
+  padding-top:calc(var(--gap) + env(safe-area-inset-top));
+  padding-left:calc(var(--gap) + env(safe-area-inset-left));
+  padding-right:calc(var(--gap) + env(safe-area-inset-right));
+}
 
 /* ---------- ヘッダー ---------- */
 .masthead{
@@ -100,7 +119,7 @@ button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
 .stage{display:grid;grid-template-columns:1fr 244px;gap:22px;align-items:start}
 @media (max-width:860px){
   .stage{grid-template-columns:1fr;gap:18px}
-  .rail{order:-1}   /* スマホでは締切を一番上に */
+  .rail{order:-1}   /* スマホでは残タスクを一番上に */
 }
 /* 狭い画面では列が潰れるので、横スクロールで幅を確保する */
 @media (max-width:680px){
@@ -144,9 +163,11 @@ button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
 }
 .dcol{position:relative;border-right:1px solid var(--rule);cursor:pointer}
 .dcol:last-child{border-right:none}
-.dcol.is-today{background:#F2FAF8}
-.dcol:hover{background:#F4F7F9}
-.dcol.is-today:hover{background:#E9F6F3}
+/* ここは background ではなく background-color を使うこと。
+   短縮形の background は background-image も消すので、下の罫線が消える */
+.dcol.is-today{background-color:#F2FAF8}
+.dcol:hover{background-color:#F4F7F9}
+.dcol.is-today:hover{background-color:#E9F6F3}
 
 /* 背景の横線。要素を並べず、CSSの背景で描く（1描画あたり200個以上のDOMが減る）
    --hour は .hours にJS側から入る（HOUR_PXと必ず一致させるため） */
@@ -167,8 +188,8 @@ button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
 }
 .ev .t{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ev .s{display:block;font-family:var(--data);font-size:9.5px;opacity:.8}
-.ev.class{background:var(--plan-bg);color:var(--plan);border-left-color:var(--plan)}
-.ev.event{background:#fff;color:var(--ink);border:1px solid var(--rule);border-left:2px solid var(--ink-soft)}
+.ev.class{background:var(--cat-bg,var(--plan-bg));color:var(--cat-ink,var(--plan));border-left-color:var(--cat,var(--plan))}
+.ev.event{background:var(--cat-bg,#fff);color:var(--cat-ink,var(--ink));border:1px solid var(--rule);border-left:2px solid var(--cat,var(--ink-soft))}
 .ev:hover{filter:brightness(.97);z-index:5}
 .ev.short{padding-top:0}
 .ev.short .s{display:inline;margin-left:5px}
@@ -188,8 +209,8 @@ button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
 }
 .chip .t{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .chip .s{display:block;font-family:var(--data);font-size:9.5px;opacity:.75}
-.chip.class{background:var(--plan-bg);color:var(--plan);border-left:2px solid var(--plan)}
-.chip.event{background:#fff;color:var(--ink);border:1px solid var(--rule);border-left:2px solid var(--ink-soft)}
+.chip.class{background:var(--cat-bg,var(--plan-bg));color:var(--cat-ink,var(--plan));border-left:2px solid var(--cat,var(--plan))}
+.chip.event{background:var(--cat-bg,#fff);color:var(--cat-ink,var(--ink));border:1px solid var(--rule);border-left:2px solid var(--cat,var(--ink-soft))}
 .chip.due{background:var(--due-bg);color:var(--due);border-left:2px solid var(--due)}
 
 /* 日をまたぐ予定・終日の予定を置く帯 */
@@ -217,7 +238,7 @@ button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   position:relative;z-index:1;
 }
-.bar.event{background:var(--plan);color:#fff}
+.bar.event{background:var(--cat,var(--plan));color:#fff}
 .bar.due{background:var(--due);color:#fff}
 .bar:hover{filter:brightness(1.15)}
 .bar.cutL{border-top-left-radius:0;border-bottom-left-radius:0;margin-left:0;padding-left:5px}
@@ -254,7 +275,7 @@ button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
 }
 .more{font-size:10px;color:var(--ink-faint);padding-left:2px}
 
-/* ---------- 締切レーン（この画面の主役） ---------- */
+/* ---------- 右レーン（タスク画面への窓） ---------- */
 .rail{
   background:#fff;border:1px solid var(--rule);border-radius:var(--radius);
   padding:14px 14px 8px;position:sticky;top:14px;
@@ -263,29 +284,35 @@ button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
   font-family:var(--display);font-size:15px;font-weight:600;letter-spacing:.18em;
   padding-bottom:9px;margin-bottom:4px;border-bottom:1px solid var(--ink);
 }
-.due-item{
-  display:flex;gap:11px;align-items:baseline;
+.rail-item{
+  display:flex;gap:9px;align-items:baseline;
   padding:10px 0;border-bottom:1px solid var(--rule-soft);width:100%;text-align:left;
 }
-.due-item:last-child{border-bottom:none}
+.rail-item .body{cursor:pointer}
+.rail-item .body:hover .ttl{color:var(--plan)}
+.rail-item:last-child{border-bottom:none}
 .dn{
-  font-family:var(--data);font-size:19px;font-weight:700;line-height:1;
-  min-width:52px;letter-spacing:-.02em;
+  font-family:var(--data);font-size:11px;font-weight:400;line-height:1.2;
+  min-width:60px;letter-spacing:-.01em;white-space:nowrap;
 }
-.dn small{font-size:10px;font-weight:400;letter-spacing:.04em}
-.due-item .body{flex:1;min-width:0}
-.due-item .ttl{font-size:13.5px;line-height:1.35;word-break:break-word}
-.due-item .dt{font-family:var(--data);font-size:10.5px;color:var(--ink-faint);letter-spacing:.03em}
-.lv0 .dn{color:var(--due)}                                  /* 今日・明日 */
-.lv1 .dn{color:#D08033}                                     /* 1週間以内 */
-.lv2 .dn{color:var(--ink-soft)}                             /* それ以降 */
-.over .dn{color:var(--due)}
-.over .ttl{text-decoration:line-through;color:var(--ink-faint)}
+.dn b{font-size:17px;font-weight:700;margin:0 1px}
+.dn small{font-size:11px;font-weight:400;letter-spacing:.02em}
+.rail-item .body{flex:1;min-width:0}
+.rail-item .ttl{font-size:13.5px;line-height:1.35;word-break:break-word}
+.rail-item .dt{font-family:var(--data);font-size:10.5px;color:var(--ink-faint);letter-spacing:.03em}
+/* 緊急度は色ではなく「濃さ」で表す。
+   色相はすべてカテゴリに明け渡してある（色を2つの意味に使うと混ざるため）。
+   取り消し線は完了を意味するので、期限切れには絶対に使わない */
+.lv0 .dn{color:var(--ink);font-weight:700}     /* 期限切れ・今日・明日 */
+.lv1 .dn{color:var(--ink-soft)}                /* 1週間以内 */
+.lv2 .dn{color:var(--ink-faint)}               /* それ以降 */
 .rail .empty{color:var(--ink-faint);font-size:12.5px;padding:16px 0;line-height:1.7}
 
 /* ---------- 追加ボタン ---------- */
 .fab{
-  position:fixed;right:20px;bottom:20px;z-index:20;
+  position:fixed;right:20px;z-index:20;
+  /* ホーム画面から全画面で開いたとき、iPhoneのホームバーに重ならないようにする */
+  bottom:calc(20px + env(safe-area-inset-bottom));
   height:50px;padding:0 22px;border-radius:25px;
   background:var(--ink);color:var(--paper);
   font-size:14px;letter-spacing:.1em;
@@ -312,12 +339,81 @@ dialog::backdrop{background:rgba(20,33,43,.42)}
 .kinds button[aria-pressed="true"]{border-color:var(--ink);background:var(--ink);color:#fff}
 .field{margin-bottom:13px}
 .field label{display:block;font-size:11px;letter-spacing:.08em;color:var(--ink-soft);margin-bottom:4px}
+.lab-row{display:flex!important;align-items:baseline;justify-content:space-between;gap:8px}
+.mini-link{
+  font-size:11px;letter-spacing:.04em;color:var(--plan);
+  text-decoration:underline;text-underline-offset:2px;padding:2px 0;
+}
+.mini-link:hover{color:var(--ink)}
 .field input,.field select,.field textarea{
   width:100%;padding:8px 9px;border:1px solid var(--rule);border-radius:var(--radius);
   font:inherit;font-size:14px;background:#fff;color:var(--ink);
 }
+/* 日付・時刻・曜日は枠ごと押して選ぶので、押せることが分かる見た目にする。
+   min-height はスマホで指で押しやすい大きさの確保 */
+.field input[type="date"],
+.field input[type="time"],
+.field select{cursor:pointer;min-height:42px}
+.field input[type="date"]:hover,
+.field input[type="time"]:hover,
+.field select:hover{border-color:var(--ink-soft)}
+/* 端のアイコンも枠と同じ扱いにする（狙う必要をなくす） */
+.field input[type="date"]::-webkit-calendar-picker-indicator,
+.field input[type="time"]::-webkit-calendar-picker-indicator{cursor:pointer}
+
+/* 押したときに「2026」「10」などが選択されて青くなるのを止める。
+   値はピッカーで選ぶので、マウスでの文字選択は不要 */
+.field input[type="date"],
+.field input[type="time"]{
+  user-select:none;-webkit-user-select:none;
+}
+.field input[type="date"]::selection,
+.field input[type="time"]::selection{background:transparent}
+
+/* ただしキーボードで入れる人には「いまどこを編集中か」が要る。
+   OS標準の強い青をやめて、アプリの色に合わせた薄い印にする */
+.field input[type="date"]::-webkit-datetime-edit-year-field:focus,
+.field input[type="date"]::-webkit-datetime-edit-month-field:focus,
+.field input[type="date"]::-webkit-datetime-edit-day-field:focus,
+.field input[type="time"]::-webkit-datetime-edit-hour-field:focus,
+.field input[type="time"]::-webkit-datetime-edit-minute-field:focus{
+  background:var(--plan-bg);color:var(--plan);border-radius:2px;outline:none;
+}
 .field textarea{resize:vertical;min-height:56px}
 .row{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:9px}
+.cat-row{
+  display:flex;align-items:center;gap:9px;
+  padding:8px 0;border-bottom:1px solid var(--rule-soft);
+}
+.cat-row input[type="color"]{
+  width:34px;height:34px;padding:2px;flex:0 0 auto;cursor:pointer;
+  border:1px solid var(--rule);border-radius:var(--radius);background:#fff;
+}
+.cat-row input[type="text"]{flex:1;min-width:0}
+.cat-del{
+  flex:0 0 auto;width:30px;height:30px;border-radius:var(--radius);
+  color:var(--ink-faint);font-size:15px;line-height:1;
+}
+.cat-del:hover{background:var(--due-bg);color:var(--due)}
+.cat-add{
+  display:block;width:100%;margin-top:11px;padding:9px;
+  border:1px dashed var(--rule);border-radius:var(--radius);
+  font-size:12.5px;color:var(--ink-soft);
+}
+.cat-add:hover{border-color:var(--ink-soft);color:var(--ink)}
+
+.cats{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:6px}
+.cats button{
+  display:flex;align-items:center;gap:7px;
+  padding:8px 10px;border:1px solid var(--rule);border-radius:var(--radius);
+  font-size:12.5px;background:#fff;text-align:left;
+}
+.cats button i{
+  width:10px;height:10px;border-radius:50%;flex:0 0 auto;
+}
+.cats button:hover{border-color:var(--ink-soft)}
+.cats button[aria-pressed="true"]{border-width:2px;padding:7px 9px;font-weight:600}
+
 .periods{display:grid;grid-template-columns:repeat(6,1fr);gap:5px}
 .periods button{
   padding:7px 2px;border:1px solid var(--rule);border-radius:var(--radius);
@@ -340,6 +436,116 @@ dialog::backdrop{background:rgba(20,33,43,.42)}
   padding:11px 14px;margin-bottom:16px;font-size:12.5px;line-height:1.6;
 }
 .warn strong{font-weight:700}
+.warn b{font-weight:700}
+.warn-detail{display:inline-block;margin-top:4px;font-size:11px;opacity:.7}
+
+/* ---------- 画面切り替え ---------- */
+.screens{display:flex;gap:2px;align-self:flex-end;padding-bottom:1px}
+.screens button{
+  padding:5px 14px;font-size:13px;letter-spacing:.06em;
+  border-bottom:2px solid transparent;color:var(--ink-faint);
+}
+.screens button[aria-pressed="true"]{color:var(--ink);border-bottom-color:var(--ink);font-weight:600}
+.badge{
+  display:inline-block;margin-left:6px;min-width:17px;padding:0 5px;
+  background:var(--due);color:#fff;border-radius:9px;
+  font-family:var(--data);font-size:10px;line-height:16px;text-align:center;vertical-align:1px;
+}
+.badge:empty{display:none}
+
+/* ---------- 右レーン（タスク画面への窓） ---------- */
+.rail-go{
+  display:block;width:100%;margin-top:10px;padding:8px;
+  border:1px solid var(--rule);border-radius:var(--radius);
+  font-size:12px;letter-spacing:.06em;color:var(--ink-soft);
+}
+.rail-go:hover{border-color:var(--ink);color:var(--ink)}
+.rail-more{font-size:11px;color:var(--ink-faint);padding-top:8px}
+
+/* ---------- タスク画面 ---------- */
+.tasks{background:#fff;border:1px solid var(--rule);border-radius:var(--radius);padding:6px 18px 14px}
+.tgroup{padding-top:14px}
+.tcount{
+  margin-left:8px;font-family:var(--data);font-size:11px;font-weight:400;
+  color:var(--ink-faint);letter-spacing:0;
+}
+.tgroup > h3{
+  font-family:var(--display);font-size:13px;font-weight:600;letter-spacing:.16em;
+  color:var(--ink-soft);padding-bottom:7px;margin-bottom:2px;
+  border-bottom:1px solid var(--rule);
+}
+/* 期限切れは「見出しの強さ」で示す。色ではなく構造で伝える */
+.tgroup.overdue > h3{color:var(--ink);border-bottom-color:var(--ink);border-bottom-width:2px}
+.tgroup.overdue .trow{background:var(--paper)}
+
+.trow{
+  display:flex;gap:12px;align-items:flex-start;width:100%;text-align:left;
+  padding:11px 2px;border-bottom:1px solid var(--rule-soft);
+}
+.trow:last-child{border-bottom:none}
+.tcheck{
+  flex:0 0 auto;width:19px;height:19px;margin-top:1px;
+  border:1.5px solid var(--rule);border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;color:transparent;
+}
+.tcheck:hover{border-color:var(--today)}
+.trow.is-done .tcheck{background:var(--today);border-color:var(--today);color:#fff}
+.tbody{flex:1;min-width:0}
+.ttitle{font-size:14px;line-height:1.4;word-break:break-word}
+/* カテゴリは小さい点で示す。行ごと塗ると期限の色（緊急度）とぶつかる */
+.cdot{
+  display:inline-block;width:7px;height:7px;border-radius:50%;
+  margin-right:6px;vertical-align:1px;flex:0 0 auto;
+}
+.tmeta{font-family:var(--data);font-size:10.5px;color:var(--ink-faint);letter-spacing:.03em}
+.tmemo{font-size:11.5px;color:var(--ink-soft);line-height:1.5;margin-top:2px}
+.tdue{
+  flex:0 0 auto;font-family:var(--data);font-size:11px;font-weight:400;
+  min-width:76px;text-align:right;line-height:1.3;white-space:nowrap;
+}
+.tdue b{font-size:16px;font-weight:700;letter-spacing:-.02em;margin:0 1px}
+.tdue small{font-size:11px;font-weight:400}
+.lv0 .tdue{color:var(--ink)}
+.lv0 .tdue b{font-weight:700}
+.lv1 .tdue{color:var(--ink-soft)}
+.lv2 .tdue{color:var(--ink-faint)}
+/* 取り消し線は「完了」だけに使う */
+.trow.is-done{opacity:.5}
+.trow.is-done .ttitle{text-decoration:line-through}
+.trow.is-done .tdue{color:var(--ink-faint);font-weight:400}
+
+/* 今日やる：作業台として他と区別する */
+.tgroup.today{
+  background:#F4F8F6;border:1px solid #D6E5DF;border-radius:var(--radius);
+  padding:2px 14px 10px;margin-top:14px;
+}
+.tgroup.today > h3{color:var(--today);border-bottom-color:#CFE2DA}
+.tgroup.today .trow{border-bottom-color:#DFEAE5}
+.tgroup.today .tempty{padding:16px 2px;font-size:12.5px}
+
+/* 「今日やる」に上げる／外すボタン */
+.tpick{
+  flex:0 0 auto;width:26px;height:26px;border-radius:50%;
+  border:1px solid var(--rule);background:#fff;
+  font-size:12px;line-height:1;color:var(--ink-faint);
+}
+.tpick:hover{border-color:var(--today);color:var(--today)}
+.tpick.on{border-color:var(--today);color:var(--today);background:#EAF5F1}
+.trow:hover .tpick{border-color:var(--ink-soft)}
+
+.rail-label{
+  font-size:10.5px;letter-spacing:.12em;color:var(--today);
+  padding:2px 0 4px;font-weight:600;
+}
+.rail .rail-item .tcheck{width:17px;height:17px;font-size:10px;margin-top:2px}
+
+.tdone-head{
+  width:100%;text-align:left;padding:13px 2px 4px;
+  font-size:12px;letter-spacing:.1em;color:var(--ink-faint);
+}
+.tdone-head:hover{color:var(--ink-soft)}
+.tempty{color:var(--ink-faint);font-size:13px;line-height:1.8;padding:26px 2px}
 
 /* ---------- フッター ---------- */
 .tools{
@@ -354,15 +560,19 @@ dialog::backdrop{background:rgba(20,33,43,.42)}
 <div class="app">
   <header class="masthead">
     <h1>じかんわり</h1>
+    <div class="screens">
+      <button id="tabCal"  aria-pressed="true">カレンダー</button>
+      <button id="tabTask" aria-pressed="false">タスク<span class="badge" id="tabTaskCount"></span></button>
+    </div>
     <span class="range" id="range"></span>
     <span class="busy" id="busy" hidden>保存中…</span>
     <span class="spacer"></span>
-    <div class="pager">
+    <div class="pager" id="pager">
       <button id="prev" aria-label="前へ">‹</button>
       <button id="now" class="now">今日</button>
       <button id="next" aria-label="次へ">›</button>
     </div>
-    <div class="viewtabs">
+    <div class="viewtabs" id="viewtabs">
       <button id="tabWeek" aria-pressed="true">週</button>
       <button id="tabMonth" aria-pressed="false">月</button>
     </div>
@@ -373,17 +583,19 @@ dialog::backdrop{background:rgba(20,33,43,.42)}
     このページを閉じると入力が消える。下の「データを書き出す」でJSONを保存しておいて。
   </p>
 
-  <div class="stage">
+  <div class="stage" id="stage">
     <section id="grid"></section>
-    <aside class="rail">
-      <h2>締切</h2>
+    <aside class="rail" id="railBox">
+      <h2>タスク<span class="badge" id="railCount"></span></h2>
       <div id="rail"></div>
+      <button class="rail-go" id="railGo">タスク画面へ →</button>
     </aside>
   </div>
 
   <div class="tools">
     <button id="gsync">Googleカレンダーとつなぐ</button>
     <span id="gstate"></span>
+    <button id="catOpen">種類を編集</button>
     <button id="export">データを書き出す（JSON）</button>
     <button id="import">データを読み込む</button>
     <span id="count"></span>
@@ -392,6 +604,20 @@ dialog::backdrop{background:rgba(20,33,43,.42)}
 
 <button class="fab" id="add">＋ 追加</button>
 
+<dialog id="catDlg">
+  <div class="sheet">
+    <h3>種類を編集</h3>
+    <p class="hint">色と名前は好きに決めていい。並び順もそのまま入力画面に出る。</p>
+    <div id="catEdit"></div>
+    <button class="cat-add" id="catAdd">＋ 種類を追加</button>
+    <p class="hint" id="catNote"></p>
+    <div class="acts">
+      <button class="btn-save" id="catSave">保存</button>
+      <button class="btn-cancel" id="catCancel">やめる</button>
+    </div>
+  </div>
+</dialog>
+
 <dialog id="dlg">
   <div class="sheet">
     <h3 id="dlgTitle">予定を追加</h3>
@@ -399,12 +625,19 @@ dialog::backdrop{background:rgba(20,33,43,.42)}
     <div class="kinds" id="kinds">
       <button data-kind="class"  aria-pressed="false">授業（毎週）</button>
       <button data-kind="event"  aria-pressed="true">予定</button>
-      <button data-kind="due"    aria-pressed="false">締切</button>
+      <button data-kind="task"   aria-pressed="false">タスク</button>
     </div>
 
     <div class="field">
       <label for="fTitle">タイトル</label>
       <input id="fTitle" type="text" placeholder="例：統計学 / レポート提出">
+    </div>
+
+    <div class="field">
+      <label class="lab-row">種類
+        <button type="button" class="mini-link" id="catOpen2">色と名前を編集</button>
+      </label>
+      <div class="cats" id="catPicks"></div>
     </div>
 
     <!-- 授業用：曜日 -->
@@ -424,7 +657,7 @@ dialog::backdrop{background:rgba(20,33,43,.42)}
       <div class="periods" id="periodPicks"></div>
     </div>
 
-    <!-- 予定・締切用：日付 -->
+    <!-- 予定・タスク用：日付 -->
     <div id="dateFields">
       <div class="row">
         <div class="field">
@@ -474,6 +707,30 @@ dialog::backdrop{background:rgba(20,33,43,.42)}
 
 <script>
 /* ==========================================================
+   じかんわり — 個人用のカレンダーとタスク管理
+
+   このファイル1つで動く。ビルド工程も外部ライブラリも無い。
+   詳しい決まりごとは同じフォルダの AGENTS.md を見ること。
+
+   章立て
+     1. 設定           … 触っていい値。カレンダーID、種類の初期値
+     2. 保存先         … LocalBackend / GoogleBackend と、その相互変換
+     3. 時間軸の設定   … 表示する時間帯と1時間の高さ
+     4. データの形     … 予定・授業・タスクの持ち方と、表示の振り分け
+     5. 描画           … カレンダー（週・月）とタスク画面
+     6. 入力シート     … 追加・編集と、種類の編集
+     7. ナビゲーション … 画面と週の切り替え
+     8. データの持ち出し／持ち込み
+     9. 起動
+
+   守ってほしい要点（詳細は AGENTS.md）
+     ・緊急度を色で表さない。色相はすべて「種類」に使う
+     ・取り消し線は「完了」だけの意味。期限切れに使わない
+     ・カレンダーに出すのは授業と予定だけ。タスクは出さない
+     ・変更したら node test.js を通す
+   ========================================================== */
+
+/* ==========================================================
    1. 設定
    ========================================================== */
 const CONFIG = {
@@ -482,9 +739,52 @@ const CONFIG = {
   // 入れ方は SETUP.md を見て。
   googleClientId: '',
 
-  calendarId: 'primary',   // 'primary' = Googleの標準カレンダー
+  calendarId: 'primary',   // 'primary' = Googleの標準カレンダー（授業・予定）
+
+  // タスク専用のカレンダーIDを入れると、タスクだけ別のカレンダーに保存される。
+  // スマホの標準カレンダーアプリ側でそのカレンダーを非表示にすれば、
+  // 予定とタスクが混ざらない。空ならcalendarIdと同じ場所に入る。
+  taskCalendarId: '',
+
   scope: 'https://www.googleapis.com/auth/calendar.events',
+
+  // 種類の初期値。アプリの「種類を編集」から変えられるので、ここは最初の一式だけ。
+  // 緊急度は色ではなく並びと濃さで表しているので、色相はすべて種類に使ってよい。
+  // ただし緑だけは「今日・完了」で使っているので、近い色は避けたほうが読み取りやすい。
+  // 4〜6個までにする。それ以上は色で見分けられなくなる
+  categories: [
+    { id:'class',   name:'授業',     color:'#245BA8' },
+    { id:'baito',   name:'バイト',   color:'#7C6410' },
+    { id:'circle',  name:'サークル', color:'#6E45B0' },
+    { id:'private', name:'私用',     color:'#8A4A6B' },
+  ],
 };
+
+/* 未分類のときの色 */
+const NO_CAT = { id:'', name:'未分類', color:'#7A8791' };
+
+/* 1色から、薄い背景色と濃い文字色を作る。
+   カテゴリごとに3色書くと増やすときに面倒なので、定義は色1つだけにしている */
+function mixHex(hex, target, ratio){
+  const n = parseInt(hex.slice(1), 16);
+  const c = [(n>>16)&255, (n>>8)&255, n&255]
+    .map(v => Math.round(v + (target - v) * ratio));
+  return `rgb(${c[0]},${c[1]},${c[2]})`;
+}
+/* いま使っている種類の一覧。保存先から読み込み、無ければ初期値を使う。
+   項目側は id しか持たないので、名前や色を変えても登録済みの予定は書き換え不要 */
+let cats = CONFIG.categories.map(c => ({...c}));
+
+const catOf   = it => cats.find(c => c.id === it.cat) || NO_CAT;
+const catTint = c => mixHex(c.color, 255, 0.87);   // 薄い背景
+const catInk  = c => mixHex(c.color, 0, 0.30);     // 読みやすい濃さの文字
+
+/* 要素に流し込むCSS変数。未分類なら何も指定せず、既定の見た目に任せる */
+function catVars(it){
+  const c = catOf(it);
+  if(!c.id) return '';
+  return `--cat:${c.color};--cat-bg:${catTint(c)};--cat-ink:${catInk(c)};`;
+}
 
 /* ==========================================================
    2. 保存先
@@ -498,6 +798,7 @@ const CONFIG = {
    保存先を増やしたいときは、同じ3つの関数を持つオブジェクトを足せばいい。
    ========================================================== */
 const KEY = 'cal:items';
+const CATS_KEY = 'cal:cats';
 const TZ  = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 // 素の保存場所。Claudeのアーティファクト内と、普通のブラウザの両方で動くようにする
@@ -520,8 +821,14 @@ const LocalBackend = {
     return raw ? JSON.parse(raw) : [];
   },
   async upsert(it){ await this.flush(); return it; },
-  async remove(id){ await this.flush(); },
-  async flush(){ await medium.set(KEY, JSON.stringify(items)); }
+  async remove(it){ await this.flush(); },
+  async flush(){ await medium.set(KEY, JSON.stringify(items)); },
+
+  async loadCats(){
+    const raw = await medium.get(CATS_KEY);
+    return raw ? JSON.parse(raw) : null;
+  },
+  async saveCats(list){ await medium.set(CATS_KEY, JSON.stringify(list)); }
 };
 
 /* ---------- Googleカレンダーに保存 ---------- */
@@ -580,7 +887,17 @@ const GoogleBackend = {
     return r.status === 204 ? null : r.json();
   },
 
-  get base(){ return '/calendars/' + encodeURIComponent(CONFIG.calendarId) + '/events'; },
+  // タスクを別カレンダーに分けている場合、種別で行き先が変わる
+  calIdFor(it){
+    return (it.kind === 'task' && CONFIG.taskCalendarId)
+      ? CONFIG.taskCalendarId : CONFIG.calendarId;
+  },
+  pathOf(calId){ return '/calendars/' + encodeURIComponent(calId) + '/events'; },
+
+  // 読みに行くカレンダーの一覧（重複は除く）
+  get calendarIds(){
+    return [...new Set([CONFIG.calendarId, CONFIG.taskCalendarId].filter(Boolean))];
+  },
 
   async list(){
     // singleEvents=false … くり返し予定を「毎週の授業1件」のまま受け取る。
@@ -588,37 +905,83 @@ const GoogleBackend = {
     const min = fmt(addDays(new Date(), -400)) + 'T00:00:00Z';
     const max = fmt(addDays(new Date(),  400)) + 'T00:00:00Z';
     const out = [];
-    let pageToken = null;
-    do{
-      const q = new URLSearchParams({
-        timeMin: min, timeMax: max,
-        singleEvents: 'false', maxResults: '250',
-        ...(pageToken ? { pageToken } : {})
-      });
-      const j = await this.api(`${this.base}?${q}`);
-      for(const ev of (j.items || [])){
-        const it = fromGoogle(ev);
-        if(it) out.push(it);
-      }
-      pageToken = j.nextPageToken || null;
-    }while(pageToken);
+    for(const calId of this.calendarIds){
+      let pageToken = null;
+      do{
+        const q = new URLSearchParams({
+          timeMin: min, timeMax: max,
+          singleEvents: 'false', maxResults: '250',
+          ...(pageToken ? { pageToken } : {})
+        });
+        const j = await this.api(`${this.pathOf(calId)}?${q}`);
+        for(const ev of (j.items || [])){
+          const it = fromGoogle(ev);
+          if(it){ it._cal = calId; out.push(it); }
+        }
+        pageToken = j.nextPageToken || null;
+      }while(pageToken);
+    }
     return out;
   },
 
   async upsert(it){
     const body = JSON.stringify(toGoogle(it));
-    // idがGoogle由来（20文字以上の英数字）なら更新、そうでなければ新規
-    const isNew = !it._remote;
-    const ev = isNew
-      ? await this.api(this.base, { method:'POST', body })
-      : await this.api(`${this.base}/${encodeURIComponent(it.id)}`, { method:'PATCH', body });
+    const calId = this.calIdFor(it);
+    const path  = this.pathOf(calId);
+
+    // 種別を変えてカレンダーをまたぐ場合は、古い方を消してから作り直す
+    if(it._remote && it._cal && it._cal !== calId){
+      try{ await this.api(`${this.pathOf(it._cal)}/${encodeURIComponent(it.id)}`, { method:'DELETE' }); }
+      catch(e){ /* すでに無いなら気にしない */ }
+      it._remote = false;
+    }
+
+    const ev = it._remote
+      ? await this.api(`${path}/${encodeURIComponent(it.id)}`, { method:'PATCH', body })
+      : await this.api(path, { method:'POST', body });
+
     it.id = ev.id;
     it._remote = true;
+    it._cal = calId;
     return it;
   },
 
-  async remove(id){
-    await this.api(`${this.base}/${encodeURIComponent(id)}`, { method:'DELETE' });
+  async remove(it){
+    const calId = it._cal || this.calIdFor(it);
+    await this.api(`${this.pathOf(calId)}/${encodeURIComponent(it.id)}`, { method:'DELETE' });
+  },
+
+  /* 種類の一覧は、目印を付けた1件の予定にJSONで入れておく。
+     こうすると端末を変えても同じ設定が使える。
+     日付ではなく目印で探すので、いつの予定に置いても見つかる */
+  _catsEventId: null,
+
+  async loadCats(){
+    const q = new URLSearchParams({
+      privateExtendedProperty: 'jikanwariSettings=1', maxResults: '1', showDeleted: 'false'
+    });
+    const j  = await this.api(`${this.pathOf(CONFIG.calendarId)}?${q}`);
+    const ev = (j.items || [])[0];
+    if(!ev) return null;
+    this._catsEventId = ev.id;
+    try{ return JSON.parse(ev.extendedProperties.private.cats); }
+    catch(e){ return null; }
+  },
+
+  async saveCats(list){
+    const body = JSON.stringify({
+      summary: '（じかんわり の設定）',
+      description: 'このアプリが種類の一覧を保存している予定です。消すと種類の設定が初期状態に戻ります。',
+      start: { date: '2020-01-01' },
+      end:   { date: '2020-01-02' },
+      transparency: 'transparent',
+      extendedProperties: { private: { jikanwariSettings: '1', cats: JSON.stringify(list) } }
+    });
+    const path = this.pathOf(CONFIG.calendarId);
+    const ev = this._catsEventId
+      ? await this.api(`${path}/${encodeURIComponent(this._catsEventId)}`, { method:'PATCH', body })
+      : await this.api(path, { method:'POST', body });
+    this._catsEventId = ev.id;
   }
 };
 
@@ -638,7 +1001,7 @@ function toGoogle(it){
   const ev = {
     summary: it.title,
     description: it.memo || '',
-    extendedProperties: { private: { kind: it.kind } }
+    extendedProperties: { private: { kind: it.kind, cat: it.cat || '' } }
   };
 
   if(it.kind === 'class'){
@@ -651,12 +1014,14 @@ function toGoogle(it){
     return ev;
   }
 
-  if(it.kind === 'due'){
-    // 締切は終日イベントにする。時刻は自前の欄に退避しておく
+  if(it.kind === 'task'){
+    // タスクは終日イベントにする。締切時刻と完了状態は自前の欄に退避しておく
     // （0分のイベントはGoogleが受け付けないため）
     ev.start = { date: it.date };
     ev.end   = { date: fmt(addDays(parse(it.date), 1)) };
     ev.extendedProperties.private.dueTime = it.start || '';
+    ev.extendedProperties.private.done    = it.done ? '1' : '';
+    ev.extendedProperties.private.today   = it.today || '';
     return ev;
   }
 
@@ -674,10 +1039,12 @@ function toGoogle(it){
 function fromGoogle(ev){
   if(ev.status === 'cancelled') return null;
   const priv = ev.extendedProperties?.private || {};
+  if(priv.jikanwariSettings) return null;      // 設定用の予定は画面に出さない
   const base = {
     id: ev.id, _remote: true,
     title: ev.summary || '(無題)',
-    memo: ev.description || ''
+    memo: ev.description || '',
+    cat: priv.cat || ''
   };
 
   // くり返し → 授業
@@ -695,19 +1062,47 @@ function fromGoogle(ev){
   // 終日
   if(ev.start.date){
     const last = fmt(addDays(parse(ev.end.date), -1));   // Googleのendは翌日なので戻す
-    if(priv.kind === 'due'){
-      return { ...base, kind:'due', date: ev.start.date, endDate: ev.start.date,
-               start: priv.dueTime || '', end:'' };
+    // 'due' は 'task' の旧名。前の版で保存したデータを読むために残してある。消さないこと
+    if(priv.kind === 'task' || priv.kind === 'due'){
+      return { ...base, kind:'task', date: ev.start.date, endDate: ev.start.date,
+               start: priv.dueTime || '', end:'',
+               done: priv.done === '1', today: priv.today || '' };
     }
     return { ...base, kind:'event', date: ev.start.date, endDate: last, start:'', end:'' };
   }
 
   // 時刻つき
-  return { ...base, kind: priv.kind === 'due' ? 'due' : 'event',
+  return { ...base, kind:'event',
     date: ev.start.dateTime.slice(0,10),
     endDate: ev.end.dateTime.slice(0,10),
     start: hhmm(ev.start.dateTime),
     end: hhmm(ev.end.dateTime) };
+}
+
+/* ---------- 保存できる環境かを確かめる ----------
+   アプリ内ブラウザ（LINE・Xなどのリンクから開いた画面）やプライベートブラウズでは
+   保存領域が使えないことがある。書き込もうとするまで気づけないと入力が丸ごと消えるので、
+   起動時に一度、実際に書いて読み直して確かめる */
+// 保存できない理由は環境によって違うので、案内も分ける。
+// 的外れな対処法を出すと、かえって遠回りさせてしまう
+const IN_ARTIFACT = (typeof window.storage !== 'undefined');
+
+const CANT_SAVE = IN_ARTIFACT
+  ? '<strong>ここはプレビュー画面なので保存できない。</strong>' +
+    '入力しても閉じると消えてしまう。<br>' +
+    '<b>公開したURL（GitHub Pagesなど）のほうを開いて使って。</b>' +
+    'そちらなら普通に保存できる。'
+  : '<strong>この画面ではデータを保存できない。</strong>' +
+    '入力しても、閉じると消えてしまう。<br>' +
+    'アプリ内ブラウザ（LINEやXのリンクから開いた画面）か、プライベートブラウズで' +
+    '開いている可能性がある。<b>SafariやChromeで直接開き直すと直ることが多い。</b>';
+
+async function probeStorage(){
+  try{
+    const v = String(Date.now());
+    await medium.set('cal:probe', v);
+    return (await medium.get('cal:probe')) === v;
+  }catch(e){ return false; }
 }
 
 /* ---------- いま使っている保存先 ---------- */
@@ -729,7 +1124,7 @@ function showBackend(){
 }
 
 /* ==========================================================
-   2. 時間軸の設定 — 自分の生活に合わせて書き換えてね
+   3. 時間軸の設定 — 自分の生活に合わせて書き換えてね
    ========================================================== */
 const DAY_START = 7;    // 週ビューで何時から表示するか
 const DAY_END   = 24;   // 何時まで表示するか（24 = 深夜0時）
@@ -746,12 +1141,21 @@ const PERIODS = [
 ];
 
 /* ==========================================================
-   3. データの形
+   4. データの形
    ----------------------------------------------------------
-   { id, kind:'class'|'event'|'due', title, memo,
+   { id, kind:'class'|'event'|'task', title, memo,
      weekday, termEnd,                  // class のみ
-     date, endDate,                     // event / due のみ
-     start, end }                       // 全種類：'HH:MM'
+     date, endDate,                     // event / task のみ
+     start, end,                        // 'HH:MM'
+     done,                              // task のみ：完了したか
+     today }                            // task のみ：「今日やる」に選んだ日 'YYYY-MM-DD'
+
+   today は真偽値ではなく日付。読むときに「今日と同じ日付か」を見るだけなので、
+   日付が変われば選択は自動で外れる。毎日リセットするための書き込みが発生しない。
+
+   種別は3つ。カレンダーに出るのは class と event だけで、
+   task はタスク画面にしか出ない（予定とタスクを混ぜないため）。
+   旧名の 'due' は読み込み時に 'task' へ変換される。
 
    授業も実時刻(start/end)で持つ。時限番号では持たない。
    （フォームの「時限」ボタンは、その時刻を入れるための入力補助でしかない）
@@ -768,7 +1172,7 @@ const PERIODS = [
      class → recurrence の RRULE:FREQ=WEEKLY;BYDAY=... に変換
    ========================================================== */
 let items = [];
-let state = { view:'week', cursor:new Date() };
+let state = { screen:'calendar', view:'week', cursor:new Date() };
 
 /* ---------- 日付ユーティリティ ---------- */
 const WD = ['日','月','火','水','木','金','土'];
@@ -782,33 +1186,79 @@ function diffDays(a,b){ return Math.round((parse(a)-parse(b))/86400000); }
 const esc = s => String(s??'').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
 
+/* ---------- 一覧の部品 ----------
+   右レーンとタスク画面で同じものを組み立てていたので、ここにまとめる。
+   片方だけ直して見た目がずれるのを防ぐ */
+const urgency  = n => n <= 1 ? 'lv0' : n <= 7 ? 'lv1' : 'lv2';   // 濃さ。色相は使わない
+
+function catDot(it){
+  const c = catOf(it);
+  return `<i class="cdot" style="background:${esc(c.color)}" title="${esc(c.name)}"></i>`;
+}
+
+function dateText(it){
+  const d = parse(it.date);
+  return `${d.getMonth()+1}/${d.getDate()} (${WD[d.getDay()]})`
+       + (it.start ? ' ' + esc(it.start) : '');
+}
+
+/* ---------- 期限の表し方 ----------
+   「D-2」のような書き方は分かりにくいので、普通の日本語にする。
+   数字だけ大きくして、ひと目で分かる速さは残す */
+function dueLabel(n, done){
+  if(done)    return '<small>済</small>';
+  if(n < 0)   return `<b>${-n}</b><small>日すぎ</small>`;
+  if(n === 0) return '<small>今日</small>';
+  if(n === 1) return '<small>明日</small>';
+  return `<small>あと</small><b>${n}</b><small>日</small>`;
+}
+
 /* ---------- 期間まわり ---------- */
 const endOf   = it => it.endDate || it.date;      // 終了日（未設定なら開始日と同じ）
 const isMulti = it => endOf(it) !== it.date;      // 日をまたぐ予定か
 const covers  = (it, ds) => ds >= it.date && ds <= endOf(it);
 
-/* ---------- その日に出るものを集める ---------- */
+/* ---------- その日のカレンダーに出るものを集める ----------
+   タスクはここに含めない。カレンダーは「その時刻でなければならないもの」だけを置く */
 function itemsOn(dateStr){
   const w = parse(dateStr).getDay();
   return items.filter(it => {
+    if(it.kind === 'task') return false;
     if(it.kind === 'class'){
       if(it.weekday !== w) return false;
       if(it.termEnd && dateStr > it.termEnd) return false;
       return true;
     }
-    if(it.kind === 'due') return it.date === dateStr;
     return covers(it, dateStr);            // 期間内なら毎日出る
   });
 }
 
+/* ---------- タスク ---------- */
+const tasks     = () => items.filter(it => it.kind === 'task');
+const openTasks = () => tasks().filter(it => !it.done)
+                               .sort((a,b) => a.date.localeCompare(b.date));
+
+/* 「今日やる」に選んであるか。today は日付なので、日付が変われば勝手に外れる */
+const isPicked    = it => it.kind === 'task' && !it.done && it.today === today();
+const pickedToday = () => openTasks().filter(isPicked);
+
 /* ---------- 帯にする予定を選ぶ ----------
-   帯に行くもの：日をまたぐ予定 / 時刻なしの予定 / 締切
+   帯に行くもの：日をまたぐ予定 / 時刻なしの予定（タスクと授業は対象外）
    時限グリッドに残るもの：その日で終わる、時刻つきの予定           */
+/* ---------- 週ビューの時間軸に置くもの ----------
+   授業と、その日で終わる時刻つきの予定。
+   帯に行くもの（日またぎ・時刻なし）とタスクはここに含めない。
+   ※ インラインで書かず関数にしてあるのは、テストから本物を呼べるようにするため */
+function gridItems(dateStr){
+  return itemsOn(dateStr).filter(it =>
+    (it.kind === 'class' || it.kind === 'event') && it.start && !isMulti(it));
+}
+
 function barItems(cols){
   return items.filter(it => {
-    if(it.kind === 'class') return false;
+    if(it.kind !== 'event') return false;                        // 授業とタスクは対象外
     if(endOf(it) < cols[0] || it.date > cols[6]) return false;   // この週と重ならない
-    return it.kind === 'due' || isMulti(it) || !it.start;
+    return isMulti(it) || !it.start;
   });
 }
 
@@ -837,19 +1287,121 @@ function bar(p, colOffset){
   const cls = ['bar', p.it.kind, p.cutL?'cutL':'', p.cutR?'cutR':'', p.it._unsaved?'unsaved':''].join(' ');
   const label = (p.it.start && !p.cutL) ? `${p.it.start} ${p.it.title}` : p.it.title;
   return `<button class="${cls}" data-id="${p.it.id}"
-    style="grid-column:${p.i0 + 1 + colOffset} / span ${p.i1 - p.i0 + 1};grid-row:${p.lane + 1}"
+    style="${catVars(p.it)}grid-column:${p.i0 + 1 + colOffset} / span ${p.i1 - p.i0 + 1};grid-row:${p.lane + 1}"
     >${esc(label)}</button>`;
 }
 
 /* ==========================================================
-   4. 描画
+   5. 描画
    ========================================================== */
 function render(){
-  document.getElementById('tabWeek').setAttribute('aria-pressed', state.view==='week');
-  document.getElementById('tabMonth').setAttribute('aria-pressed', state.view==='month');
-  state.view === 'week' ? renderWeek() : renderMonth();
-  renderRail();
+  const onCal = state.screen === 'calendar';
+
+  document.getElementById('tabCal').setAttribute('aria-pressed', onCal);
+  document.getElementById('tabTask').setAttribute('aria-pressed', !onCal);
+  document.getElementById('tabWeek').setAttribute('aria-pressed', state.view === 'week');
+  document.getElementById('tabMonth').setAttribute('aria-pressed', state.view === 'month');
+
+  // カレンダー用の操作はタスク画面では隠す
+  document.getElementById('pager').hidden    = !onCal;
+  document.getElementById('viewtabs').hidden = !onCal;
+  document.getElementById('railBox').hidden  = !onCal;
+
+  const n = openTasks().length;
+  document.getElementById('tabTaskCount').textContent = n || '';
+
+  if(onCal){
+    state.view === 'week' ? renderWeek() : renderMonth();
+    renderRail();
+  }else{
+    renderTasks();
+    document.getElementById('range').textContent = '';
+  }
   document.getElementById('count').textContent = `登録数 ${items.length} 件`;
+}
+
+/* ==========================================================
+   タスク画面
+   ----------------------------------------------------------
+   期限切れ / これから / 完了済み の3つに分ける。
+   完了済みは畳んでおく（残っているものだけを見せたいため）
+   ========================================================== */
+let showDone = false;
+
+function taskRow(it){
+  const n = diffDays(it.date, today());
+  const picked = isPicked(it);
+  const pick = it.done ? ''
+    : `<button class="tpick ${picked ? 'on' : ''}" data-today="${it.id}"
+         aria-label="${picked ? '今日やるから外す' : '今日やるに入れる'}"
+         title="${picked ? '今日やるから外す' : '今日やるに入れる'}">${picked ? '×' : '＋'}</button>`;
+
+  return `<div class="trow ${urgency(n)} ${it.done ? 'is-done' : ''} ${it._unsaved ? 'unsaved' : ''}">
+    <button class="tcheck" data-toggle="${it.id}" aria-label="完了にする">✓</button>
+    <span class="tbody" data-id="${it.id}" role="button" tabindex="0">
+      <span class="ttitle">${catDot(it)}${esc(it.title)}</span>
+      <span class="tmeta">${dateText(it)}</span>
+      ${it.memo ? `<span class="tmemo">${esc(it.memo.split('\n')[0])}</span>` : ''}
+    </span>
+    ${pick}
+    <span class="tdue">${dueLabel(n, it.done)}</span>
+  </div>`;
+}
+
+function renderTasks(){
+  const all  = tasks();
+  const open = openTasks();
+  const done = all.filter(it => it.done)
+                  .sort((a,b) => b.date.localeCompare(a.date));
+
+  if(!all.length){
+    document.getElementById('grid').innerHTML =
+      `<div class="tasks"><p class="tempty">まだタスクが無いよ。<br>
+       右下の「＋ 追加」から「タスク」を選んで登録してみて。</p></div>`;
+    return;
+  }
+
+  // 「今日やる」に選んだものは、そちらにだけ出す（同じタスクを2箇所に出さない）
+  const picked = open.filter(isPicked);
+  const rest   = open.filter(it => !isPicked(it));
+
+  // 緊急度は色ではなく「どのまとまりに入っているか」で伝える
+  const bucket = it => {
+    const n = diffDays(it.date, today());
+    return n < 0 ? 0 : n <= 1 ? 1 : n <= 7 ? 2 : 3;
+  };
+  const GROUPS = ['期限切れ', '今日・明日', '今週', 'それ以降'];
+
+  let h = '<div class="tasks">';
+
+  h += `<section class="tgroup today"><h3>今日やる${picked.length ? ` (${picked.length})` : ''}</h3>`;
+  h += picked.length
+    ? picked.map(taskRow).join('')
+    : '<p class="tempty">まだ選んでないよ。<br>下のリストの「＋」で、今日やるものを選ぼう。</p>';
+  h += '</section>';
+
+  GROUPS.forEach((name, i) => {
+    const list = rest.filter(it => bucket(it) === i);
+    if(!list.length) return;                       // 空のまとまりは出さない
+    h += `<section class="tgroup ${i === 0 ? 'overdue' : ''}">
+            <h3>${name}<span class="tcount">${list.length}</span></h3>
+            ${list.map(taskRow).join('')}
+          </section>`;
+  });
+  if(!rest.length){
+    h += '<section class="tgroup"><p class="tempty">ほかに残っているタスクは無いよ。</p></section>';
+  }
+
+  if(done.length){
+    h += `<section class="tgroup">
+      <button class="tdone-head" id="toggleDone">
+        ${showDone ? '▾' : '▸'} 完了済み (${done.length})
+      </button>
+      ${showDone ? done.map(taskRow).join('') : ''}
+    </section>`;
+  }
+  h += '</div>';
+  document.getElementById('grid').innerHTML = h;
 }
 
 function renderWeek(){
@@ -870,7 +1422,7 @@ function renderWeek(){
     h += `<div class="${cls}">${WD[w]}<span class="d">${d.getDate()}</span></div>`;
   }
 
-  // 帯：日をまたぐ予定・時刻なしの予定・締切
+  // 帯：日をまたぐ予定・時刻なしの予定
   const { placed, lanes } = layoutBand(barItems(cols), cols);
   h += `<div class="band" style="grid-template-rows:repeat(${Math.max(1, lanes)},20px)">
           <div class="glabel">終日</div>`;
@@ -895,8 +1447,7 @@ function renderWeek(){
   const nowMin = new Date().getHours()*60 + new Date().getMinutes();
   for(const d of days){
     const ds = fmt(d);
-    const timed = itemsOn(ds).filter(it =>
-      it.kind !== 'due' && it.start && !isMulti(it));
+    const timed = gridItems(ds);
     h += `<div class="dcol ${ds===today()?'is-today':''}" data-date="${ds}">`;
     for(const ev of layoutDay(timed)) h += evHtml(ev);
     if(ds === today() && nowMin >= DAY_START*60 && nowMin <= DAY_END*60){
@@ -961,14 +1512,13 @@ function evHtml(ev){
   const w   = 100 / ev.cols;
   const time = ev.it.end ? `${ev.it.start}–${ev.it.end}` : ev.it.start;
   return `<button class="ev ${ev.it.kind}${hgt < 32 ? ' short' : ''}${ev.it._unsaved ? ' unsaved' : ''}" data-id="${ev.it.id}"
-    style="top:${top}px;height:${hgt}px;left:calc(${ev.col*w}% + 1px);width:calc(${w}% - 3px)"
+    style="${catVars(ev.it)}top:${top}px;height:${hgt}px;left:calc(${ev.col*w}% + 1px);width:calc(${w}% - 3px)"
     ><span class="t">${esc(ev.it.title)}</span><span class="s">${esc(time)}</span></button>`;
 }
 
 function chip(it){
-  const sub = it.kind === 'due' ? (it.start ? esc(it.start) : '締切')
-            : (it.start ? esc(it.start) : '');
-  return `<button class="chip ${it.kind}${it._unsaved ? ' unsaved' : ''}" data-id="${it.id}">
+  const sub = it.start ? esc(it.start) : '';
+  return `<button class="chip ${it.kind}${it._unsaved ? ' unsaved' : ''}" data-id="${it.id}" style="${catVars(it)}">
     <span class="t">${esc(it.title)}</span>
     ${sub ? `<span class="s">${sub}</span>` : ''}
   </button>`;
@@ -1015,30 +1565,37 @@ function renderMonth(){
   document.getElementById('grid').innerHTML = h;
 }
 
+/* 右レーンは一覧そのものではなく「タスク画面への窓」。
+   カレンダーを汚さずに、残件の存在だけを視界に入れるのが狙い */
 function renderRail(){
-  const dues = items.filter(i => i.kind==='due')
-                    .sort((a,b) => a.date.localeCompare(b.date));
+  const open = openTasks();
   const el = document.getElementById('rail');
+  document.getElementById('railCount').textContent = open.length || '';
 
-  if(!dues.length){
-    el.innerHTML = '<p class="empty">まだ締切は登録されてないよ。<br>「＋ 追加」から「締切」を選んで登録してみて。</p>';
+  if(!open.length){
+    el.innerHTML = '<p class="empty">残っているタスクは無いよ。</p>';
     return;
   }
 
-  el.innerHTML = dues.map(it => {
-    const n = diffDays(it.date, today());
-    const lv = n < 0 ? 'over' : n <= 1 ? 'lv0' : n <= 7 ? 'lv1' : 'lv2';
-    const label = n < 0 ? `<small>超過</small>` : n === 0 ? '今日' : `D-${n}`;
-    const md = `${parse(it.date).getMonth()+1}/${parse(it.date).getDate()} (${WD[parse(it.date).getDay()]})`;
-    return `<button class="due-item ${lv}" data-id="${it.id}">
-      <span class="dn">${label}</span>
-      <span class="body">
-        <span class="ttl">${esc(it.title)}</span>
-        <span class="dt">${md}${it.start ? ' ' + esc(it.start) : ''}</span>
-      </span>
-    </button>`;
-  }).join('');
+  // 今日やるを選んでいれば「いま何をやるか」を、選んでいなければ期限順を見せる
+  const picked = pickedToday();
+  const list   = picked.length ? picked : open.slice(0, 3);
+  const rest   = picked.length ? open.length - picked.length : open.length - list.length;
 
+  el.innerHTML =
+    (picked.length ? '<p class="rail-label">今日やる</p>' : '') +
+    list.map(it => {
+      const n = diffDays(it.date, today());
+      return `<div class="rail-item ${urgency(n)}">
+        ${picked.length ? `<button class="tcheck" data-toggle="${it.id}" aria-label="完了にする">✓</button>` : ''}
+        <span class="dn">${dueLabel(n, false)}</span>
+        <span class="body" data-id="${it.id}" role="button" tabindex="0">
+          <span class="ttl">${catDot(it)}${esc(it.title)}</span>
+          <span class="dt">${dateText(it)}</span>
+        </span>
+      </div>`;
+    }).join('')
+    + (rest > 0 ? `<p class="rail-more">ほか ${rest} 件</p>` : '');
 }
 
 /* クリックの受け口は #grid と #rail に1つずつだけ置く。
@@ -1067,9 +1624,49 @@ function initClicks(){
   });
 
   document.getElementById('rail').addEventListener('click', e => {
+    const chk = e.target.closest('[data-toggle]');
+    if(chk){ toggleDone(chk.dataset.toggle); return; }
     const hit = e.target.closest('[data-id]');
     if(hit) openSheet(items.find(i => i.id === hit.dataset.id));
   });
+
+  // タスク画面：チェックで完了、＋で今日やる、本文で編集
+  document.getElementById('grid').addEventListener('click', e => {
+    const chk = e.target.closest('[data-toggle]');
+    if(chk){ toggleDone(chk.dataset.toggle); return; }
+    const pick = e.target.closest('[data-today]');
+    if(pick){ togglePick(pick.dataset.today); return; }
+    if(e.target.closest('#toggleDone')){ showDone = !showDone; render(); return; }
+    const body = e.target.closest('.tbody');
+    if(body) openSheet(items.find(i => i.id === body.dataset.id));
+  });
+
+  document.getElementById('railGo').addEventListener('click', () => {
+    state.screen = 'task'; render();
+  });
+  document.getElementById('tabCal').addEventListener('click', () => {
+    state.screen = 'calendar'; render();
+  });
+  document.getElementById('tabTask').addEventListener('click', () => {
+    state.screen = 'task'; render();
+  });
+}
+
+function toggleDone(id){
+  const it = items.find(i => i.id === id);
+  if(!it) return;
+  it.done = !it.done;
+  if(it.done) it.today = '';        // 終わったら今日やるからも外す
+  render();
+  persist(it);
+}
+
+function togglePick(id){
+  const it = items.find(i => i.id === id);
+  if(!it) return;
+  it.today = isPicked(it) ? '' : today();
+  render();
+  persist(it);
 }
 
 /* ==========================================================
@@ -1097,19 +1694,145 @@ function persist(it){
     })
     .catch(err => {
       it._unsaved = true;
-      showWarn('<strong>保存できなかった。</strong> ' + esc(err.message) +
-               '（この予定は破線で表示される）');
+      showWarn('<strong>保存できなかった。</strong>（未保存のものは破線で出る）<br>' +
+               CANT_SAVE + '<br><span class="warn-detail">' + esc(err.message) + '</span>');
       render();
     })
     .finally(endWrite);
 }
 
 /* ==========================================================
-   5. 入力シート
+   6. 入力シート
    ========================================================== */
 const dlg = document.getElementById('dlg');
 let editing = null;
 let kind = 'event';
+
+/* 日付・時刻の枠は、どこを押してもピッカーが開くようにする。
+   標準のままだと、PCのブラウザでは端の小さいアイコンを狙わないと開かない。
+   showPicker() は利用者の操作からしか呼べず、対応していない環境もあるので
+   失敗しても素通りさせる（その場合はキーボード入力で従来どおり入れられる） */
+let pickerOpened = false;
+
+// マウスの場合は、押した時点でセグメントにフォーカスを渡さずにピッカーを開く。
+// preventDefault() を挟まないと「2026」などが選択状態になって青くなる
+dlg.addEventListener('pointerdown', e => {
+  pickerOpened = false;
+  const inp = e.target.closest('input[type="date"], input[type="time"]');
+  if(!inp || e.pointerType !== 'mouse') return;      // 指やペンは標準の動きに任せる
+  if(typeof inp.showPicker !== 'function') return;
+  e.preventDefault();                                // フォーカスと選択を起こさせない
+  pickerOpened = true;
+  try{ inp.showPicker(); }catch(err){ pickerOpened = false; }
+});
+
+// 指やペン、pointer非対応の環境はこちらで開く
+dlg.addEventListener('click', e => {
+  if(pickerOpened){ pickerOpened = false; return; }   // 二重に開かない
+  const inp = e.target.closest('input[type="date"], input[type="time"]');
+  if(!inp || typeof inp.showPicker !== 'function') return;
+  try{ inp.showPicker(); }catch(err){ /* 開けない環境は何もしない */ }
+});
+
+// カテゴリのボタンを並べる。CONFIG.categories を増やせばここも自動で増える
+let pickedCat = '';
+const catBox = document.getElementById('catPicks');
+
+// 種類が編集されたら押しボタンも作り直す
+function buildCatPicks(){
+  catBox.innerHTML = [NO_CAT, ...cats].map(c =>
+    `<button type="button" data-cat="${esc(c.id)}" aria-pressed="false">
+       <i style="background:${esc(c.color)}"></i>${esc(c.name)}
+     </button>`).join('');
+  setCat(pickedCat);
+}
+
+function setCat(id){
+  const all = [NO_CAT, ...cats];
+  pickedCat = all.some(c => c.id === id) ? id : '';
+  catBox.querySelectorAll('button').forEach(b => {
+    const on = b.dataset.cat === pickedCat;
+    b.setAttribute('aria-pressed', on);
+    const c = all.find(x => x.id === b.dataset.cat) || NO_CAT;
+    b.style.borderColor = on ? c.color : '';
+    b.style.background  = on ? catTint(c) : '';
+    b.style.color       = on ? catInk(c)  : '';
+  });
+}
+catBox.addEventListener('click', e => {
+  const b = e.target.closest('button');
+  if(b) setCat(b.dataset.cat);
+});
+buildCatPicks();
+
+/* ==========================================================
+   種類の編集
+   ----------------------------------------------------------
+   idは中で作って外に出さない。名前や色を変えても、
+   登録済みの予定はidで結びついているので付け直しは要らない
+   ========================================================== */
+const catDlg = document.getElementById('catDlg');
+let draftCats = [];
+
+function drawCatEdit(){
+  document.getElementById('catEdit').innerHTML = draftCats.map((c, i) => `
+    <div class="cat-row">
+      <input type="color" value="${esc(c.color)}" data-i="${i}" data-f="color" aria-label="色">
+      <input type="text"  value="${esc(c.name)}"  data-i="${i}" data-f="name"
+             maxlength="12" placeholder="名前">
+      <button class="cat-del" data-del="${i}" aria-label="この種類を消す">×</button>
+    </div>`).join('');
+
+  // 消したときに、その種類が付いている予定が何件あるか知らせる
+  const lost = draftCats.length < cats.length
+    ? items.filter(it => it.cat && !draftCats.some(c => c.id === it.cat)).length
+    : 0;
+  document.getElementById('catNote').textContent = lost
+    ? `消した種類が付いている予定が ${lost} 件ある。保存すると未分類になる（予定自体は消えない）`
+    : '';
+}
+
+function openCatEditor(){
+  draftCats = cats.map(c => ({...c}));
+  drawCatEdit();
+  catDlg.showModal();
+}
+// 入力シートの中と、画面下のツール、どちらからでも開ける
+document.getElementById('catOpen').addEventListener('click', openCatEditor);
+document.getElementById('catOpen2').addEventListener('click', openCatEditor);
+
+document.getElementById('catEdit').addEventListener('input', e => {
+  const el = e.target;
+  if(el.dataset.i === undefined) return;
+  draftCats[Number(el.dataset.i)][el.dataset.f] = el.value;
+});
+
+document.getElementById('catEdit').addEventListener('click', e => {
+  const b = e.target.closest('[data-del]');
+  if(!b) return;
+  draftCats.splice(Number(b.dataset.del), 1);
+  drawCatEdit();
+});
+
+document.getElementById('catAdd').addEventListener('click', () => {
+  draftCats.push({ id: 'c' + uid(), name: '', color: '#5B6B78' });
+  drawCatEdit();
+  const last = document.querySelectorAll('#catEdit input[type="text"]');
+  last[last.length - 1]?.focus();
+});
+
+document.getElementById('catCancel').addEventListener('click', () => catDlg.close());
+
+document.getElementById('catSave').addEventListener('click', async () => {
+  cats = draftCats
+    .map(c => ({ ...c, name: c.name.trim() }))
+    .filter(c => c.name);                  // 名前が空のものは捨てる
+  buildCatPicks();
+  catDlg.close();
+  render();
+  try{ await Backend.saveCats(cats); showWarn(null); }
+  catch(err){ showWarn('<strong>種類の設定を保存できなかった。</strong><br>' + CANT_SAVE); }
+});
 
 // 「時限」ボタンを並べる。押すと開始・終了時刻が埋まる（ただの入力補助）
 const picks = document.getElementById('periodPicks');
@@ -1130,14 +1853,14 @@ function setKind(k){
   document.getElementById('classFields').hidden  = (k !== 'class');
   document.getElementById('periodField').hidden  = (k !== 'class');
   document.getElementById('termField').hidden    = (k !== 'class');
-  // 日付は予定・締切だけ
+  // 日付は予定・タスクだけ
   document.getElementById('dateFields').hidden   = (k === 'class');
-  // 締切は「その一点」なので終了日・終了時刻は出さない
-  document.getElementById('endDateField').hidden = (k === 'due');
-  document.getElementById('endTimeField').hidden = (k === 'due');
+  // タスクは「その一点」なので終了日・終了時刻は出さない
+  document.getElementById('endDateField').hidden = (k === 'task');
+  document.getElementById('endTimeField').hidden = (k === 'task');
   document.getElementById('hintSpan').hidden     = (k !== 'event');
-  document.getElementById('labDate').textContent  = (k === 'due') ? '締切日' : '開始日';
-  document.getElementById('labStart').textContent = (k === 'due') ? '時刻（任意）' : '開始時刻';
+  document.getElementById('labDate').textContent  = (k === 'task') ? '期限' : '開始日';
+  document.getElementById('labStart').textContent = (k === 'task') ? '時刻（任意）' : '開始時刻';
 }
 
 function showErr(msg){
@@ -1157,8 +1880,9 @@ function openSheet(item, presetDate, presetStart, presetEnd){
   document.getElementById('dlgTitle').textContent = item ? '編集' : '追加';
   document.getElementById('del').hidden = !item;
 
-  setKind(item ? item.kind : 'event');
+  setKind(item ? item.kind : (state.screen === 'task' ? 'task' : 'event'));
   resetHint();
+  setCat(item?.cat || '');
   document.getElementById('fTitle').value   = item?.title   || '';
   document.getElementById('fMemo').value    = item?.memo    || '';
   document.getElementById('fWeekday').value = item?.weekday ?? (presetDate ? parse(presetDate).getDay() : 1);
@@ -1177,7 +1901,7 @@ document.getElementById('save').addEventListener('click', async () => {
   const title = document.getElementById('fTitle').value.trim();
   if(!title){ document.getElementById('fTitle').focus(); return; }
 
-  const base = { title, memo: document.getElementById('fMemo').value.trim(), kind };
+  const base = { title, memo: document.getElementById('fMemo').value.trim(), kind, cat: pickedCat };
   let data;
 
   if(kind === 'class'){
@@ -1195,9 +1919,9 @@ document.getElementById('save').addEventListener('click', async () => {
       termEnd: document.getElementById('fTermEnd').value || null };
   }else{
     const d  = document.getElementById('fDate').value;
-    const ed = (kind === 'due') ? d : (document.getElementById('fEndDate').value || d);
+    const ed = (kind === 'task') ? d : (document.getElementById('fEndDate').value || d);
     const st = document.getElementById('fStart').value;
-    const en = (kind === 'due') ? '' : document.getElementById('fEnd').value;
+    const en = (kind === 'task') ? '' : document.getElementById('fEnd').value;
 
     if(!d){ showErr('日付を入れてね。'); return; }
     if(ed < d){
@@ -1207,6 +1931,10 @@ document.getElementById('save').addEventListener('click', async () => {
       showErr('終了時刻が開始時刻より前になってる。日をまたぐ予定なら、終了日を翌日にしてね。'); return;
     }
     data = { ...base, date:d, endDate:ed, start:st, end:en };
+    if(kind === 'task'){
+      data.done  = editing?.done  || false;
+      data.today = editing?.today || '';
+    }
   }
 
   let target;
@@ -1233,11 +1961,12 @@ document.getElementById('del').addEventListener('click', () => {
   render();
 
   beginWrite();
-  Backend.remove(gone.id)
+  Backend.remove(gone)
     .then(() => showWarn(null))
     .catch(err => {
       items.push(gone);              // 消せなかったので戻す
-      showWarn('<strong>削除できなかった。</strong> ' + esc(err.message));
+      showWarn('<strong>削除できなかった。</strong><br>' +
+               CANT_SAVE + '<br><span class="warn-detail">' + esc(err.message) + '</span>');
       render();
     })
     .finally(endWrite);
@@ -1246,7 +1975,7 @@ document.getElementById('del').addEventListener('click', () => {
 document.getElementById('cancel').addEventListener('click', () => dlg.close());
 
 /* ==========================================================
-   6. ナビゲーション
+   7. ナビゲーション
    ========================================================== */
 document.getElementById('add').addEventListener('click', () => openSheet(null, today()));
 document.getElementById('now').addEventListener('click', () => { state.cursor = new Date(); render(); });
@@ -1262,14 +1991,14 @@ document.getElementById('tabWeek').addEventListener('click', () => { state.view=
 document.getElementById('tabMonth').addEventListener('click', () => { state.view='month'; render(); });
 
 /* ==========================================================
-   7. データの持ち出し／持ち込み
+   8. データの持ち出し／持ち込み
    （別のPC・別の環境に移すときや、バックアップ用）
    ========================================================== */
 document.getElementById('export').addEventListener('click', () => {
-  // _remote / _unsaved は内部用なので書き出さない
+  // _remote / _unsaved は内部用なので書き出さない。種類の設定も一緒に持ち出す
   const clean = items.map(it =>
     Object.fromEntries(Object.entries(it).filter(([k]) => !k.startsWith('_'))));
-  const blob = new Blob([JSON.stringify(clean, null, 2)], {type:'application/json'});
+  const blob = new Blob([JSON.stringify({ cats, items: clean }, null, 2), ], {type:'application/json'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = `schedule-${today()}.json`;
@@ -1284,8 +2013,15 @@ document.getElementById('import').addEventListener('click', () => {
     const file = inp.files[0]; if(!file) return;
     try{
       const parsed = JSON.parse(await file.text());
-      if(!Array.isArray(parsed)) throw new Error('形式が違う');
-      items = parsed.map(it => { const c = {...it}; delete c._remote; return c; });
+      // 古い形式（配列だけ）も読めるようにしておく
+      const list = Array.isArray(parsed) ? parsed : parsed.items;
+      if(!Array.isArray(list)) throw new Error('形式が違う');
+      if(!Array.isArray(parsed) && Array.isArray(parsed.cats) && parsed.cats.length){
+        cats = parsed.cats;
+        buildCatPicks();
+        await Backend.saveCats(cats).catch(() => {});
+      }
+      items = list.map(it => { const c = {...it}; delete c._remote; return c; });
       if(Backend.name === 'google'){
         // Google側にも1件ずつ登録し直す
         for(const it of items) await Backend.upsert(it);
@@ -1301,16 +2037,22 @@ document.getElementById('import').addEventListener('click', () => {
 });
 
 /* ==========================================================
-   8. 起動
+   9. 起動
    ========================================================== */
 /* 古いデータの手当て：授業が時限番号(period)しか持っていなければ、
    PERIODS を引いて実時刻(start/end)に変換する。1度変換すればそのまま残る */
 function migrate(list){
   let changed = false;
   const out = list.map(it => {
+    // 授業：時限番号しか無いものを実時刻に変換する
     if(it.kind === 'class' && !it.start && it.period){
       const p = PERIODS.find(x => x.n === it.period);
       if(p){ changed = true; return { ...it, start:p.s, end:p.e }; }
+    }
+    // 締切(due) はタスク(task) に統合された。古いデータを読むための変換なので消さないこと
+    if(it.kind === 'due'){
+      changed = true;
+      return { ...it, kind:'task', done: it.done === true };
     }
     return it;
   });
@@ -1329,6 +2071,10 @@ async function useBackend(be){
   showBackend();
   setLoading(true, be.name === 'google' ? 'Googleカレンダーから読み込み中…' : '読み込み中…');
   try{
+    const saved = await Backend.loadCats().catch(() => null);
+    cats = (Array.isArray(saved) && saved.length) ? saved : CONFIG.categories.map(c => ({...c}));
+    buildCatPicks();
+
     const { out, changed } = migrate(await Backend.list());
     items = out;
     if(changed && Backend.name === 'local') await Backend.flush();
@@ -1359,6 +2105,9 @@ document.getElementById('gsync').addEventListener('click', async () => {
 (async function init(){
   initClicks();                      // クリックの受け口は起動時に1回だけ
 
+  const canSave = await probeStorage();
+  if(!canSave) showWarn(CANT_SAVE);
+
   // 前回Googleにつないでいたら、画面を出さずに復帰を試みる
   const prefer = await medium.get('cal:backend');
   if(prefer === 'google' && CONFIG.googleClientId){
@@ -1381,15 +2130,19 @@ document.getElementById('gsync').addEventListener('click', async () => {
     const t = new Date();
     items = [
       {id:uid(), kind:'class', title:'統計学', memo:'3号館 201',
-       weekday:1, start:'10:40', end:'12:10', termEnd:null},
+       weekday:1, start:'10:40', end:'12:10', termEnd:null, cat:'class'},
       {id:uid(), kind:'class', title:'論理回路', memo:'工学部棟 A-12',
-       weekday:3, start:'09:00', end:'10:30', termEnd:null},
-      {id:uid(), kind:'due',   title:'統計学レポート', memo:'PDFで提出',
-       date:fmt(addDays(t,3)), endDate:fmt(addDays(t,3)), start:'23:59', end:''},
+       weekday:3, start:'09:00', end:'10:30', termEnd:null, cat:'class'},
+      {id:uid(), kind:'task',  title:'レポートを出す', memo:'PDFで提出',
+       date:fmt(addDays(t,3)), endDate:fmt(addDays(t,3)), start:'23:59', end:'',
+       done:false, today:fmt(t), cat:'class'},
+      {id:uid(), kind:'task',  title:'教科書を買う', memo:'',
+       date:fmt(addDays(t,6)), endDate:fmt(addDays(t,6)), start:'', end:'',
+       done:false, today:'', cat:'private'},
       {id:uid(), kind:'event', title:'バイト', memo:'',
-       date:fmt(addDays(t,1)), endDate:fmt(addDays(t,1)), start:'17:00', end:'21:00'},
+       date:fmt(addDays(t,1)), endDate:fmt(addDays(t,1)), start:'17:00', end:'21:00', cat:'baito'},
       {id:uid(), kind:'event', title:'合宿', memo:'日をまたぐ予定はこう出るよ',
-       date:fmt(addDays(t,5)), endDate:fmt(addDays(t,7)), start:'09:00', end:'15:00'},
+       date:fmt(addDays(t,5)), endDate:fmt(addDays(t,7)), start:'09:00', end:'15:00', cat:'circle'},
     ];
     await Backend.flush();
     render();
