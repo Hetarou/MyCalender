@@ -12,11 +12,12 @@
 <meta name="theme-color" content="#F4F2ED">
 
 <!-- iPhone は manifest を見ないので個別に指定する -->
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="color-scheme" content="light">
 <meta name="apple-mobile-web-app-title" content="schedule">
-<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<link rel="apple-touch-icon" href="./icon-192.png">
 <link rel="icon" href="./icon-192.png" type="image/png">
 <style>
 /* ==========================================================
@@ -709,6 +710,101 @@ dialog::backdrop{background:rgba(20,33,43,.42)}
   .editor-dialog{inset:auto 0 0 0;transform:none;width:100%;height:96dvh;max-height:96dvh}.editor-dialog .editor-sheet{border-radius:18px 18px 0 0;padding:0 18px 86px}.sheet-actions{bottom:-86px;margin-left:-18px;margin-right:-18px;margin-bottom:-86px;padding-left:18px;padding-right:18px}.editor-dialog[open]{animation:mobileSheetIn .22s ease-out}@keyframes mobileSheetIn{from{transform:translateY(24px);opacity:.85}to{transform:none;opacity:1}}.periods{grid-template-columns:repeat(3,1fr)}.cats{grid-template-columns:repeat(2,minmax(0,1fr))}.compact-sheet{width:calc(100vw - 20px);max-height:90dvh}.toast{bottom:calc(var(--bottom-nav) + 18px + env(safe-area-inset-bottom));max-width:calc(100vw - 28px);white-space:nowrap}
 }
 
+
+/* ---------- PWA・接続状態 ---------- */
+.pwa-status-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px;
+  margin-top:13px;
+}
+.pwa-status-card{
+  padding:12px 13px;
+  border:1px solid var(--rule);
+  border-radius:12px;
+  background:var(--card);
+}
+.pwa-status-card b{
+  display:block;
+  font-size:13px;
+  font-weight:600;
+}
+.pwa-status-card span{
+  display:block;
+  margin-top:3px;
+  font-family:var(--data);
+  font-size:12px;
+  color:var(--ink-soft);
+}
+.pwa-version{
+  font-family:var(--data);
+  font-size:12px;
+  color:var(--ink-faint);
+}
+.pwa-prompt{
+  position:fixed;
+  left:50%;
+  bottom:calc(24px + env(safe-area-inset-bottom));
+  transform:translateX(-50%);
+  z-index:110;
+  width:min(520px,calc(100vw - 24px));
+  padding:15px 16px;
+  border:1px solid var(--rule);
+  border-radius:16px;
+  background:var(--card);
+  box-shadow:var(--shadow);
+}
+.pwa-prompt-row{
+  display:flex;
+  align-items:flex-start;
+  gap:13px;
+}
+.pwa-prompt-icon{
+  display:grid;
+  place-items:center;
+  flex:0 0 auto;
+  width:42px;
+  height:42px;
+  border-radius:12px;
+  background:var(--accent-bg);
+  color:var(--accent);
+  font-family:var(--data);
+  font-size:18px;
+}
+.pwa-prompt-copy{flex:1;min-width:0}
+.pwa-prompt-copy b{display:block;font-size:14px}
+.pwa-prompt-copy p{
+  margin-top:3px;
+  color:var(--ink-soft);
+  font-size:12.5px;
+  line-height:1.55;
+}
+.pwa-prompt-actions{
+  display:flex;
+  justify-content:flex-end;
+  gap:8px;
+  margin-top:12px;
+}
+.pwa-prompt-actions button{
+  min-height:38px;
+  padding:7px 14px;
+  border:1px solid var(--rule);
+  border-radius:9px;
+  background:var(--card);
+  font-size:13px;
+}
+.pwa-prompt-actions .primary{
+  border-color:var(--accent);
+  background:var(--accent);
+  color:var(--on-fill);
+}
+@media (max-width:560px){
+  .pwa-status-grid{grid-template-columns:1fr}
+  .pwa-prompt{
+    bottom:calc(var(--bottom-nav) + 12px + env(safe-area-inset-bottom));
+  }
+}
+
 </style>
 </head>
 <body>
@@ -820,6 +916,33 @@ dialog::backdrop{background:rgba(20,33,43,.42)}
           <button class="sbtn" id="catOpen">色と名前を編集</button>
         </section>
 
+
+        <section class="settings-section">
+          <div class="settings-title-row">
+            <div>
+              <h3>アプリ</h3>
+              <p class="settings-desc">インストール、更新、接続状態を確認します。</p>
+            </div>
+            <span class="pwa-version" id="appVersion">v1.0.0</span>
+          </div>
+          <div class="pwa-status-grid">
+            <div class="pwa-status-card">
+              <b>接続状態</b>
+              <span id="networkState">確認中</span>
+            </div>
+            <div class="pwa-status-card">
+              <b>インストール</b>
+              <span id="installState">確認中</span>
+            </div>
+          </div>
+          <div class="srow">
+            <button class="sbtn primary" id="installApp" hidden>この端末にインストール</button>
+            <button class="sbtn" id="updateApp" hidden>新しい版へ更新</button>
+            <button class="sbtn" id="checkUpdate">更新を確認</button>
+          </div>
+          <p class="shint" id="pwaHint"></p>
+        </section>
+
         <section class="settings-section">
           <h3>データ管理</h3>
           <p class="settings-desc">別の端末へ移すときや、控えを取るときに使います。</p>
@@ -926,6 +1049,21 @@ dialog::backdrop{background:rgba(20,33,43,.42)}
   </div>
 </dialog>
 <div class="toast" id="toast" hidden role="status" aria-live="polite"></div>
+
+<div class="pwa-prompt" id="pwaPrompt" hidden role="dialog" aria-labelledby="pwaPromptTitle">
+  <div class="pwa-prompt-row">
+    <span class="pwa-prompt-icon" aria-hidden="true">▣</span>
+    <div class="pwa-prompt-copy">
+      <b id="pwaPromptTitle">この端末にscheduleを追加</b>
+      <p id="pwaPromptText">ホーム画面やスタートメニューから、通常のアプリのように起動できます。</p>
+    </div>
+  </div>
+  <div class="pwa-prompt-actions">
+    <button id="pwaPromptLater">あとで</button>
+    <button class="primary" id="pwaPromptInstall">インストール</button>
+  </div>
+</div>
+
 <script>
 /* ==========================================================
    schedule — 個人用のカレンダーとタスク管理
@@ -2787,25 +2925,192 @@ document.getElementById('gsync').addEventListener('click', async () => {
   }
 })();
 </script>
-     <script>
-  if ("serviceWorker" in navigator) {
-    window.addEventListener("load", async () => {
-      try {
-        const registration =
-          await navigator.serviceWorker.register("./sw.js");
 
-        console.log(
-          "Service Worker registered:",
-          registration.scope
-        );
-      } catch (error) {
-        console.error(
-          "Service Worker registration failed:",
-          error
-        );
-      }
-    });
+<script>
+/* ==========================================================
+   PWA制御
+   Google Calendar / OAuthの通信処理とは独立して動作する。
+   ========================================================== */
+(() => {
+  const APP_VERSION = "1.0.0";
+  const INSTALL_DISMISSED_KEY = "schedule:pwa-install-dismissed";
+  let deferredInstallPrompt = null;
+  let swRegistration = null;
+  let refreshing = false;
+
+  const byId = id => document.getElementById(id);
+  const versionEl = byId("appVersion");
+  const networkEl = byId("networkState");
+  const installStateEl = byId("installState");
+  const installButton = byId("installApp");
+  const updateButton = byId("updateApp");
+  const checkButton = byId("checkUpdate");
+  const hintEl = byId("pwaHint");
+  const promptEl = byId("pwaPrompt");
+  const promptInstall = byId("pwaPromptInstall");
+  const promptLater = byId("pwaPromptLater");
+
+  if(versionEl) versionEl.textContent = `v${APP_VERSION}`;
+
+  const isStandalone = () =>
+    window.matchMedia("(display-mode: standalone)").matches ||
+    window.navigator.standalone === true;
+
+  function showPwaToast(message){
+    const toast = byId("toast");
+    if(!toast) return;
+    toast.textContent = message;
+    toast.hidden = false;
+    toast.classList.remove("show");
+    void toast.offsetWidth;
+    toast.classList.add("show");
+    clearTimeout(showPwaToast.timer);
+    showPwaToast.timer = setTimeout(() => {
+      toast.hidden = true;
+      toast.classList.remove("show");
+    }, 2600);
   }
+
+  function updateNetworkState(){
+    const online = navigator.onLine;
+    if(networkEl) networkEl.textContent = online ? "オンライン" : "オフライン";
+    if(!online) showPwaToast("オフラインです。Google同期は接続復帰後に利用できます。");
+  }
+
+  function updateInstallState(){
+    if(!installStateEl) return;
+
+    if(isStandalone()){
+      installStateEl.textContent = "インストール済み";
+      if(installButton) installButton.hidden = true;
+      if(promptEl) promptEl.hidden = true;
+      return;
+    }
+
+    if(deferredInstallPrompt){
+      installStateEl.textContent = "インストールできます";
+      if(installButton) installButton.hidden = false;
+    }else{
+      installStateEl.textContent = "ブラウザから追加できます";
+      if(installButton) installButton.hidden = true;
+    }
+  }
+
+  async function requestInstall(){
+    if(!deferredInstallPrompt){
+      if(hintEl){
+        hintEl.textContent =
+          /iPhone|iPad|iPod/.test(navigator.userAgent)
+            ? "iPhoneではSafariの共有ボタンから「ホーム画面に追加」を選んでください。"
+            : "ブラウザのメニューから「アプリをインストール」または「ホーム画面に追加」を選んでください。";
+      }
+      return;
+    }
+
+    deferredInstallPrompt.prompt();
+    const choice = await deferredInstallPrompt.userChoice;
+    deferredInstallPrompt = null;
+    if(promptEl) promptEl.hidden = true;
+    updateInstallState();
+
+    if(choice.outcome === "accepted"){
+      showPwaToast("インストールを開始しました。");
+    }
+  }
+
+  function showUpdateReady(worker){
+    if(updateButton) updateButton.hidden = false;
+    if(hintEl) hintEl.textContent = "新しいバージョンを利用できます。";
+    updateButton?.addEventListener("click", () => {
+      worker.postMessage({ type: "SKIP_WAITING" });
+    }, { once:true });
+    showPwaToast("新しいバージョンがあります。");
+  }
+
+  async function registerServiceWorker(){
+    if(!("serviceWorker" in navigator)){
+      if(hintEl) hintEl.textContent = "このブラウザはService Workerに対応していません。";
+      return;
+    }
+
+    try{
+      swRegistration = await navigator.serviceWorker.register("./sw.js");
+      console.log("Service Worker registered:", swRegistration.scope);
+
+      if(swRegistration.waiting){
+        showUpdateReady(swRegistration.waiting);
+      }
+
+      swRegistration.addEventListener("updatefound", () => {
+        const worker = swRegistration.installing;
+        if(!worker) return;
+
+        worker.addEventListener("statechange", () => {
+          if(worker.state === "installed" && navigator.serviceWorker.controller){
+            showUpdateReady(worker);
+          }
+        });
+      });
+    }catch(error){
+      console.error("Service Worker registration failed:", error);
+      if(hintEl) hintEl.textContent = "オフライン機能を開始できませんでした。sw.jsの配置を確認してください。";
+    }
+  }
+
+  window.addEventListener("beforeinstallprompt", event => {
+    event.preventDefault();
+    deferredInstallPrompt = event;
+    updateInstallState();
+
+    const dismissedAt = Number(localStorage.getItem(INSTALL_DISMISSED_KEY) || 0);
+    const sevenDays = 7 * 24 * 60 * 60 * 1000;
+    if(promptEl && Date.now() - dismissedAt > sevenDays){
+      promptEl.hidden = false;
+    }
+  });
+
+  window.addEventListener("appinstalled", () => {
+    deferredInstallPrompt = null;
+    if(promptEl) promptEl.hidden = true;
+    updateInstallState();
+    showPwaToast("scheduleをインストールしました。");
+  });
+
+  window.addEventListener("online", updateNetworkState);
+  window.addEventListener("offline", updateNetworkState);
+
+  navigator.serviceWorker?.addEventListener("controllerchange", () => {
+    if(refreshing) return;
+    refreshing = true;
+    window.location.reload();
+  });
+
+  installButton?.addEventListener("click", requestInstall);
+  promptInstall?.addEventListener("click", requestInstall);
+  promptLater?.addEventListener("click", () => {
+    localStorage.setItem(INSTALL_DISMISSED_KEY, String(Date.now()));
+    if(promptEl) promptEl.hidden = true;
+  });
+
+  checkButton?.addEventListener("click", async () => {
+    if(!swRegistration){
+      showPwaToast("Service Workerがまだ準備できていません。");
+      return;
+    }
+    try{
+      await swRegistration.update();
+      if(!swRegistration.waiting){
+        showPwaToast("現在のバージョンが最新です。");
+      }
+    }catch(error){
+      showPwaToast("更新を確認できませんでした。");
+    }
+  });
+
+  updateNetworkState();
+  updateInstallState();
+  window.addEventListener("load", registerServiceWorker);
+})();
 </script>
 </body>
 </html>
