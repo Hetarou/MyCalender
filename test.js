@@ -37,7 +37,8 @@ code += `
   endOf, isMulti, fmt, parse, addDays, diffDays, toMin, migrate,
   tasks, openTasks, isPicked, pickedToday, today,
   catOf, dueLabel, CONFIG, NO_CAT, catTint, catInk,
-  narrowScreen, DAY_HOUR_PX, gridItems,
+  narrowScreen, DAY_HOUR_PX, gridItems, THEMES, prefs, applyTheme,
+  setTheme: id => { prefs.theme = id; },
   setCats: list => { cats = list; },
   setItems: list => { items = list; },
   DAY_START, DAY_END, HOUR_PX, PERIODS
@@ -148,6 +149,52 @@ test('テーマ：色がすべて変数になっている（直書きが残っ�
   const after = style.slice(style.indexOf('*{box-sizing'));   // :root の定義より後ろ
   const raw = [...new Set([...after.matchAll(/#[0-9A-Fa-f]{3,6}\b/g)].map(x => x[0]))];
   eq(raw, [], '変数の外に色が直書きされている（片方の版だけ壊れる）');
+});
+
+test('設定：画面下に散らばっていた操作が設定にまとまっている', () => {
+  const body = html.slice(0, html.indexOf('<script>'));
+  ok(body.includes('id="setDlg"'), '設定シートが無い');
+  for(const id of ['gsync','gresync','fTheme','fDayStart','fDayEnd','periodEdit','catOpen','export','import']){
+    ok(body.slice(body.indexOf('id="setDlg"')).includes(`id="${id}"`), `${id} が設定の中に無い`);
+  }
+  const tools = body.slice(body.indexOf('class="tools"'), body.indexOf('class="tools"') + 400);
+  ok(!/id="(export|import|catOpen)"/.test(tools), '画面下にまだ操作が残っている');
+});
+
+test('テーマ：2つ以上あり、明暗の区別を持っている', () => {
+  ok(T.THEMES.length >= 2, 'テーマが1つしかない');
+  ok(T.THEMES.some(x => x.dark) && T.THEMES.some(x => !x.dark), '明るい版と暗い版が揃っていない');
+  const style = html.slice(html.indexOf('<style>'), html.indexOf('</style>'));
+  for(const th of T.THEMES.filter(x => x.dark)){
+    ok(style.includes(`[data-theme="${th.id}"]`), `${th.name} の色が定義されていない`);
+  }
+});
+
+test('テーマ：暗いテーマでは種類の背景も暗くなる', () => {
+  const c = T.CONFIG.categories[0];
+  T.setTheme('paper'); const light = rgbOf(T.catTint(c));
+  T.setTheme('night'); const dark  = rgbOf(T.catTint(c));
+  T.setTheme('paper');
+  const sum = a => a[0] + a[1] + a[2];
+  ok(sum(dark) < sum(light) - 200, '暗いテーマで背景が明るいまま（白っぽい帯が浮く）');
+});
+
+test('テーマ：どのテーマでも種類の色が読める濃さになる', () => {
+  for(const th of T.THEMES){
+    T.setTheme(th.id);
+    for(const c of T.CONFIG.categories){
+      const d = contrast(rgbOf(T.catTint(c)), rgbOf(T.catInk(c)));
+      ok(d >= 4.5, `${th.name} で ${c.name} が読みにくい（${d.toFixed(1)}）`);
+    }
+  }
+  T.setTheme('paper');
+});
+
+test('設定：表示する時間帯と時限を書き換えられる', () => {
+  const js = m[1];
+  ok(/^let DAY_START/m.test(js) && /^let DAY_END/m.test(js), '時間帯が固定値のまま');
+  ok(/^let PERIODS/m.test(js), '時限が固定値のまま');
+  ok(/savePrefs/.test(js), '設定を保存する処理が無い');
 });
 
 test('テーマ：一本で、OSの設定に振り回されない', () => {

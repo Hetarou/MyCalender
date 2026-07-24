@@ -1,15 +1,15 @@
 {
-  "name": "じかんわり",
-  "short_name": "じかんわり",
-  "description": "時間割・予定・タスクを1つで見るための個人用カレンダー",
+  "name": "schedule",
+  "short_name": "schedule",
+  "description": "予定・授業・タスクを1つで見るための個人用スケジュール管理",
   "lang": "ja",
   "dir": "ltr",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#EDEFF1",
-  "theme_color": "#14212B",
+  "background_color": "#F4F2ED",
+  "theme_color": "#F4F2ED",
   "icons": [
     {
       "src": "./icon-192.png",

@@ -64,6 +64,34 @@
   --radius-pill:999px;   /* 丸ボタン・バッジ */
 }
 
+/* テーマ「夜」。:root の値を上書きする。
+   色の役割は紙と共通（--accent＝いま・今日・選択中、--done＝完了）。
+   役割まで変えると、テーマを切り替えるたび意味を覚え直すことになる */
+[data-theme="night"]{
+  --paper:#0D1117;
+  --card:#161C24;
+  --card-hov:#1C242E;
+  --out:#10151B;
+  --hover:#1C242E;
+  --ink:#DCE3EA;
+  --ink-soft:#8B98A6;
+  --ink-faint:#5C6773;
+  --rule:#28313C;
+  --rule-soft:#1E252E;
+  --rule-faint:#181E25;
+  --plan:#58A6FF;
+  --plan-bg:#16324D;
+  --due:#E5786A;
+  --due-bg:#3A1D18;
+  --accent:#22D3EE;
+  --accent-bg:#0E3138;
+  --done:#4ADE80;
+  --today-bg:#141B23;
+  --today-hov:#1A222B;
+  --today-line:#25313C;
+  --on-fill:#0D1117;
+}
+
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
 body{
@@ -578,6 +606,33 @@ dialog::backdrop{background:rgba(20,33,43,.42)}
 .tdone-head:hover{color:var(--ink-soft)}
 .tempty{color:var(--ink-faint);font-size:14px;line-height:1.8;padding:26px 2px}
 
+/* ---------- 設定シート ---------- */
+.sheet.wide{width:min(520px,calc(100vw - 24px));max-height:82vh;overflow-y:auto}
+.sgroup{padding:16px 0;border-bottom:1px solid var(--rule-faint)}
+.sgroup:first-of-type{padding-top:4px}
+.sgroup:last-of-type{border-bottom:none}
+.sgroup > h4{
+  font-size:12.5px;font-weight:600;letter-spacing:.06em;color:var(--ink-faint);
+  margin-bottom:9px;
+}
+.sline{font-size:15px;color:var(--ink);line-height:1.5}
+.shint{font-size:12px;color:var(--ink-faint);line-height:1.6;margin-top:2px}
+.srow{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.sbtn{
+  padding:9px 16px;border:1px solid var(--rule);border-radius:var(--radius-sm);
+  font-size:13px;color:var(--ink);background:var(--card);
+}
+.sbtn:hover{border-color:var(--ink-soft)}
+
+/* 時限の編集 */
+.prow{display:flex;align-items:center;gap:8px;padding:6px 0}
+.prow .pn{
+  font-family:var(--data);font-size:13px;color:var(--ink-soft);
+  min-width:34px;flex:0 0 auto;
+}
+.prow input[type="time"]{flex:1;min-width:0}
+.prow .tilde{color:var(--ink-faint);font-size:13px}
+
 /* ---------- フッター ---------- */
 .tools{
   margin-top:26px;padding-top:12px;border-top:1px solid var(--rule);
@@ -630,16 +685,73 @@ dialog::backdrop{background:rgba(20,33,43,.42)}
   </div>
 
   <div class="tools">
-    <button id="gsync">Googleカレンダーとつなぐ</button>
+    <button id="setOpen">設定</button>
     <span id="gstate"></span>
-    <button id="catOpen">種類を編集</button>
-    <button id="export">データを書き出す（JSON）</button>
-    <button id="import">データを読み込む</button>
     <span id="count"></span>
   </div>
 </div>
 
 <button class="fab" id="add">＋ 追加</button>
+
+<dialog id="setDlg">
+  <div class="sheet wide">
+    <h3>設定</h3>
+
+    <section class="sgroup">
+      <h4>同期</h4>
+      <p class="sline" id="syncState">この端末のみ</p>
+      <p class="shint" id="syncWhen"></p>
+      <div class="srow">
+        <button class="sbtn" id="gsync">Googleカレンダーとつなぐ</button>
+        <button class="sbtn" id="gresync" hidden>再同期</button>
+      </div>
+    </section>
+
+    <section class="sgroup">
+      <h4>表示</h4>
+      <div class="field">
+        <label for="fTheme">テーマ</label>
+        <select id="fTheme"></select>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="fDayStart">表示する時間帯（開始）</label>
+          <select id="fDayStart"></select>
+        </div>
+        <div class="field">
+          <label for="fDayEnd">終わり</label>
+          <select id="fDayEnd"></select>
+        </div>
+      </div>
+    </section>
+
+    <section class="sgroup">
+      <h4>時限</h4>
+      <p class="shint">「時限から入れる」ボタンで入る時刻。自分の大学に合わせて。</p>
+      <div id="periodEdit"></div>
+      <button class="cat-add" id="periodAdd">＋ 時限を追加</button>
+    </section>
+
+    <section class="sgroup">
+      <h4>種類</h4>
+      <p class="sline" id="catSummary"></p>
+      <div class="srow"><button class="sbtn" id="catOpen">色と名前を編集</button></div>
+    </section>
+
+    <section class="sgroup">
+      <h4>データ</h4>
+      <p class="shint">別の端末へ移すときや、控えを取るときに。</p>
+      <div class="srow">
+        <button class="sbtn" id="export">書き出す</button>
+        <button class="sbtn" id="import">読み込む</button>
+      </div>
+    </section>
+
+    <div class="acts">
+      <button class="btn-save" id="setSave">閉じる</button>
+    </div>
+  </div>
+</dialog>
 
 <dialog id="catDlg">
   <div class="sheet">
@@ -797,6 +909,24 @@ const CONFIG = {
   ],
 };
 
+/* 選べるテーマ。dark は「地が暗いか」。
+   種類の色から背景を作る向きがこれで決まる（明るい地なら白へ、暗い地なら黒へ寄せる） */
+const THEMES = [
+  { id:'paper', name:'紙（明るい）', dark:false },
+  { id:'night', name:'夜（暗い）',   dark:true  },
+];
+
+/* 画面に関する設定。保存先に保存され、端末をまたいで揃う */
+let prefs = { theme:'paper', dayStart:0, dayEnd:24, periods:null };
+
+const themeOf = () => THEMES.find(t => t.id === prefs.theme) || THEMES[0];
+
+function applyTheme(){
+  document.documentElement.dataset.theme = prefs.theme;
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if(meta) meta.setAttribute('content', themeOf().dark ? '#0D1117' : '#F4F2ED');
+}
+
 /* 未分類のときの色 */
 const NO_CAT = { id:'', name:'未分類', color:'#7A8791' };
 
@@ -819,8 +949,10 @@ const catOf = it => cats.find(c => c.id === it.cat) || NO_CAT;
    明るい版を足すときは、この寄せる向きも一緒に変えること。
    ここだけは色変数の差し替えでは解決しない */
 const calmly  = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
-const catTint = c => mixHex(c.color, 255, 0.90);   // ごく薄い背景
-const catInk  = c => mixHex(c.color, 0, 0.32);     // 濃い文字
+/* 明るい地なら白へ寄せて薄く、暗い地なら黒へ寄せて暗くする。
+   固定にすると、暗いテーマで白っぽい帯が浮いて汚くなる */
+const catTint = c => themeOf().dark ? mixHex(c.color, 0, 0.72) : mixHex(c.color, 255, 0.90);
+const catInk  = c => themeOf().dark ? mixHex(c.color, 255, 0.55) : mixHex(c.color, 0, 0.32);
 
 /* 要素に流し込むCSS変数。未分類なら何も指定せず、既定の見た目に任せる */
 function catVars(it){
@@ -843,6 +975,7 @@ function catVars(it){
 const KEY = 'cal:items';
 const CATS_KEY = 'cal:cats';
 const TOKEN_KEY = 'cal:token';
+const PREFS_KEY = 'cal:prefs';
 const TZ  = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 // 素の保存場所。Claudeのアーティファクト内と、普通のブラウザの両方で動くようにする
@@ -872,7 +1005,13 @@ const LocalBackend = {
     const raw = await medium.get(CATS_KEY);
     return raw ? JSON.parse(raw) : null;
   },
-  async saveCats(list){ await medium.set(CATS_KEY, JSON.stringify(list)); }
+  async saveCats(list){ await medium.set(CATS_KEY, JSON.stringify(list)); },
+
+  async loadPrefs(){
+    const raw = await medium.get(PREFS_KEY);
+    return raw ? JSON.parse(raw) : null;
+  },
+  async savePrefs(p){ await medium.set(PREFS_KEY, JSON.stringify(p)); }
 };
 
 /* ---------- Googleカレンダーに保存 ---------- */
@@ -1035,34 +1174,50 @@ const GoogleBackend = {
      こうすると端末を変えても同じ設定が使える。
      日付ではなく目印で探すので、いつの予定に置いても見つかる */
   _catsEventId: null,
+  _settings: undefined,        // 1セッションに1回だけ取りに行く
 
-  async loadCats(){
+  async _loadSettings(){
+    if(this._settings !== undefined) return this._settings;
     const q = new URLSearchParams({
       privateExtendedProperty: 'scheduleSettings=1', maxResults: '1', showDeleted: 'false'
     });
     const j  = await this.api(`${this.pathOf(CONFIG.calendarId)}?${q}`);
     const ev = (j.items || [])[0];
-    if(!ev) return null;
+    if(!ev){ this._settings = null; return null; }
     this._catsEventId = ev.id;
-    try{ return JSON.parse(ev.extendedProperties.private.cats); }
-    catch(e){ return null; }
+    const p = ev.extendedProperties?.private || {};
+    const parse = t => { try{ return JSON.parse(t); }catch(e){ return null; } };
+    this._settings = { cats: parse(p.cats), prefs: parse(p.prefs) };
+    return this._settings;
   },
 
-  async saveCats(list){
+  /* 種類と設定を1件の予定にまとめて入れる。
+     別々に書くと、片方の保存でもう片方が消えるため */
+  async _saveSettings(){
     const body = JSON.stringify({
       summary: '（schedule の設定）',
-      description: 'このアプリが種類の一覧を保存している予定です。消すと種類の設定が初期状態に戻ります。',
+      description: 'このアプリが種類と表示設定を保存している予定です。消すと設定が初期状態に戻ります。',
       start: { date: '2020-01-01' },
       end:   { date: '2020-01-02' },
       transparency: 'transparent',
-      extendedProperties: { private: { scheduleSettings: '1', cats: JSON.stringify(list) } }
+      extendedProperties: { private: {
+        scheduleSettings: '1',
+        cats:  JSON.stringify(cats),
+        prefs: JSON.stringify(prefs)
+      } }
     });
     const path = this.pathOf(CONFIG.calendarId);
     const ev = this._catsEventId
       ? await this.api(`${path}/${encodeURIComponent(this._catsEventId)}`, { method:'PATCH', body })
       : await this.api(path, { method:'POST', body });
     this._catsEventId = ev.id;
-  }
+    this._settings = { cats, prefs };
+  },
+
+  async loadCats(){  return (await this._loadSettings())?.cats  || null; },
+  async loadPrefs(){ return (await this._loadSettings())?.prefs || null; },
+  async saveCats(){  await this._saveSettings(); },
+  async savePrefs(){ await this._saveSettings(); }
 };
 
 /* ---------- 自前の形 ⇄ Googleの形 ---------- */
@@ -1196,24 +1351,22 @@ function showWarn(msg){
 }
 
 function showBackend(){
+  drawSync();
   const el = document.getElementById('gstate');
-  if(el) el.textContent = '保存先：' + Backend.label;
-  const btn = document.getElementById('gsync');
-  if(btn) btn.textContent = Backend.name === 'google'
-    ? 'Googleカレンダーを切り離す' : 'Googleカレンダーとつなぐ';
+  if(el) el.textContent = Backend.name === 'google' ? 'Googleカレンダー' : 'この端末のみ';
 }
 
 /* ==========================================================
    3. 時間軸の設定 — 自分の生活に合わせて書き換えてね
    ========================================================== */
-const DAY_START = 0;    // 何時から表示するか（0 = 深夜0時）
-const DAY_END   = 24;   // 何時まで表示するか（24 = 翌0時）
+let DAY_START = 0;      // 何時から表示するか（0 = 深夜0時）。設定から変えられる
+let DAY_END   = 24;     // 何時まで表示するか（24 = 翌0時）。設定から変えられる
 // 0〜24にしておくと、範囲の外にはみ出す予定を端に寄せる処理が働かずに済む
 const HOUR_PX   = 44;   // 週ビューの1時間ぶんの高さ(px)
 const DAY_HOUR_PX = 26; // 今日ビューの1時間ぶんの高さ。1日ぶんが一画面に収まる詰め方
 
 // 「2限」を押したときに入る時刻。自分の大学の時間割に合わせて書き換えてね
-const PERIODS = [
+let PERIODS = [
   {n:1, s:'09:00', e:'10:30'},
   {n:2, s:'10:40', e:'12:10'},
   {n:3, s:'13:00', e:'14:30'},
@@ -1926,6 +2079,136 @@ catBox.addEventListener('click', e => {
 buildCatPicks();
 
 /* ==========================================================
+   設定
+   ----------------------------------------------------------
+   画面下に散らばっていた操作をここへ集約。
+   テーマ・表示する時間帯・時限は保存先に保存され、端末をまたいで揃う
+   ========================================================== */
+const setDlg = document.getElementById('setDlg');
+
+/* 設定の値を実際の表示へ反映する */
+function applyPrefs(){
+  applyTheme();
+  DAY_START = Number(prefs.dayStart) || 0;
+  DAY_END   = Number(prefs.dayEnd)   || 24;
+  if(Array.isArray(prefs.periods) && prefs.periods.length) PERIODS = prefs.periods;
+  buildPeriodPicks();
+}
+
+async function savePrefs(){
+  applyPrefs();
+  render();
+  try{ await Backend.savePrefs(prefs); showWarn(null); }
+  catch(err){ showWarn('<strong>設定を保存できなかった。</strong><br>' + CANT_SAVE); }
+}
+
+/* --- 同期の状態 --- */
+function drawSync(){
+  const onGoogle = Backend.name === 'google';
+  document.getElementById('syncState').textContent =
+    onGoogle ? 'Googleカレンダー（端末間で同期）' : 'この端末のみ（同期しない）';
+  document.getElementById('syncWhen').textContent =
+    onGoogle && lastSync ? '最終同期 ' + lastSync : '';
+  document.getElementById('gsync').textContent =
+    onGoogle ? '接続を解除' : 'Googleカレンダーとつなぐ';
+  document.getElementById('gresync').hidden = !onGoogle;
+}
+let lastSync = '';
+
+/* --- テーマ・時間帯の選択肢 --- */
+document.getElementById('fTheme').innerHTML =
+  THEMES.map(t => `<option value="${t.id}">${esc(t.name)}</option>`).join('');
+const hourOpts = (from, to) => {
+  let h = '';
+  for(let i = from; i <= to; i++) h += `<option value="${i}">${pad(i % 24)}:00</option>`;
+  return h;
+};
+document.getElementById('fDayStart').innerHTML = hourOpts(0, 12);
+document.getElementById('fDayEnd').innerHTML   = hourOpts(12, 24);
+
+/* --- 時限の編集 --- */
+function buildPeriodEdit(){
+  document.getElementById('periodEdit').innerHTML = PERIODS.map((p, i) => `
+    <div class="prow">
+      <span class="pn">${p.n}限</span>
+      <input type="time" value="${esc(p.s)}" data-p="${i}" data-f="s" aria-label="${p.n}限の開始">
+      <span class="tilde">〜</span>
+      <input type="time" value="${esc(p.e)}" data-p="${i}" data-f="e" aria-label="${p.n}限の終了">
+      <button class="cat-del" data-pdel="${i}" aria-label="この時限を消す">×</button>
+    </div>`).join('');
+}
+
+document.getElementById('periodEdit').addEventListener('input', e => {
+  const el = e.target;
+  if(el.dataset.p === undefined) return;
+  PERIODS[Number(el.dataset.p)][el.dataset.f] = el.value;
+  prefs.periods = PERIODS;
+});
+document.getElementById('periodEdit').addEventListener('click', e => {
+  const b = e.target.closest('[data-pdel]');
+  if(!b) return;
+  PERIODS.splice(Number(b.dataset.pdel), 1);
+  PERIODS.forEach((p, i) => p.n = i + 1);
+  prefs.periods = PERIODS;
+  buildPeriodEdit();
+});
+document.getElementById('periodAdd').addEventListener('click', () => {
+  const last = PERIODS[PERIODS.length - 1];
+  PERIODS.push({ n: PERIODS.length + 1, s: last ? last.e : '09:00', e: last ? last.e : '10:30' });
+  prefs.periods = PERIODS;
+  buildPeriodEdit();
+});
+
+/* --- 開く・閉じる --- */
+document.getElementById('setOpen').addEventListener('click', () => {
+  document.getElementById('fTheme').value    = prefs.theme;
+  document.getElementById('fDayStart').value = prefs.dayStart;
+  document.getElementById('fDayEnd').value   = prefs.dayEnd;
+  document.getElementById('catSummary').textContent =
+    cats.map(c => c.name).join('・') || '（未設定）';
+  buildPeriodEdit();
+  drawSync();
+  setDlg.showModal();
+});
+document.getElementById('setSave').addEventListener('click', async () => {
+  setDlg.close();
+  await savePrefs();
+});
+
+document.getElementById('fTheme').addEventListener('change', e => {
+  prefs.theme = e.target.value;
+  applyTheme();
+  buildCatPicks();
+  render();                      // 種類の色を作り直すため描き直す
+});
+document.getElementById('fDayStart').addEventListener('change', e => {
+  prefs.dayStart = Number(e.target.value);
+  if(prefs.dayEnd <= prefs.dayStart){
+    prefs.dayEnd = Math.min(24, prefs.dayStart + 1);
+    document.getElementById('fDayEnd').value = prefs.dayEnd;
+  }
+  applyPrefs(); render();
+});
+document.getElementById('fDayEnd').addEventListener('change', e => {
+  prefs.dayEnd = Number(e.target.value);
+  if(prefs.dayEnd <= prefs.dayStart){
+    prefs.dayStart = Math.max(0, prefs.dayEnd - 1);
+    document.getElementById('fDayStart').value = prefs.dayStart;
+  }
+  applyPrefs(); render();
+});
+
+document.getElementById('gresync').addEventListener('click', async () => {
+  try{
+    await useBackend(GoogleBackend);
+    lastSync = new Date().toTimeString().slice(0,5);
+    drawSync();
+  }catch(err){
+    showWarn('<strong>読み込めなかった。</strong> ' + esc(err.message));
+  }
+});
+
+/* ==========================================================
    種類の編集
    ----------------------------------------------------------
    idは中で作って外に出さない。名前や色を変えても、
@@ -1996,8 +2279,11 @@ document.getElementById('catSave').addEventListener('click', async () => {
 
 // 「時限」ボタンを並べる。押すと開始・終了時刻が埋まる（ただの入力補助）
 const picks = document.getElementById('periodPicks');
-picks.innerHTML = PERIODS.map(p =>
-  `<button type="button" data-p="${p.n}" title="${p.s}〜${p.e}">${p.n}限</button>`).join('');
+function buildPeriodPicks(){
+  picks.innerHTML = PERIODS.map(p =>
+    `<button type="button" data-p="${p.n}" title="${p.s}〜${p.e}">${p.n}限</button>`).join('');
+}
+buildPeriodPicks();
 picks.addEventListener('click', e => {
   const b = e.target.closest('button'); if(!b) return;
   const p = PERIODS.find(x => x.n === Number(b.dataset.p)); if(!p) return;
@@ -2245,6 +2531,10 @@ async function useBackend(be){
     cats = (Array.isArray(saved) && saved.length) ? saved : CONFIG.categories.map(c => ({...c}));
     buildCatPicks();
 
+    const sp = await Backend.loadPrefs().catch(() => null);
+    if(sp) prefs = { ...prefs, ...sp };
+    applyPrefs();
+
     const { out, changed } = migrate(await Backend.list());
     items = out;
     if(changed && Backend.name === 'local') await Backend.flush();
@@ -2267,6 +2557,8 @@ document.getElementById('gsync').addEventListener('click', async () => {
     await GoogleBackend.connect(true);
     await medium.set('cal:backend', 'google');
     await useBackend(GoogleBackend);
+    lastSync = new Date().toTimeString().slice(0,5);
+    drawSync();
     showWarn(null);
   }catch(err){
     showWarn('<strong>つなげなかった。</strong> ' + esc(err.message));
@@ -2285,6 +2577,8 @@ document.getElementById('gsync').addEventListener('click', async () => {
     try{
       await GoogleBackend.connect(false);
       await useBackend(GoogleBackend);
+      lastSync = new Date().toTimeString().slice(0,5);
+      drawSync();
       scrollToNow();
       return;
     }catch(err){

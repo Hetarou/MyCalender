@@ -3,18 +3,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>じかんわり — スケジュール管理</title>
+<title>schedule — 予定とタスク</title>
 
 <!-- ホーム画面／デスクトップにアプリとして入れるための設定。
      manifest.json とアイコンが同じ場所に無いと入れられないが、
      無くてもページ自体は普通に動く（機能の追加であって前提ではない） -->
 <link rel="manifest" href="./manifest.json">
-<meta name="theme-color" content="#14212B">
+<meta name="theme-color" content="#F4F2ED">
 
 <!-- iPhone は manifest を見ないので個別に指定する -->
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="じかんわり">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="color-scheme" content="light">
+<meta name="apple-mobile-web-app-title" content="schedule">
 <link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <link rel="icon" href="./icon-192.png" type="image/png">
 <style>
@@ -22,26 +23,73 @@
    デザイントークン
    予定=青 / 期限=赤 / 今日・完了=緑。色にはそれぞれ1つだけ意味を持たせている。
    ========================================================== */
+/* 読みやすさを最優先にした配色。
+   地は温かい紙色、文字はほぼ黒。装飾より、文字と余白の余裕を優先する。
+
+   色の役割はここで固定する。
+     --accent  いま・今日・選択中を指す印。UIの状態にだけ使い、データの意味には使わない
+     --done    完了だけ
+   種類（カテゴリ）の色には、この2色に近い色を選ばない */
 :root{
-  --paper:#EDEFF1;
-  --ink:#14212B;
-  --ink-soft:#5C6B77;
-  --ink-faint:#93A1AB;
-  --rule:#C9D2D8;
-  --rule-soft:#DFE4E8;
-  --rule-faint:#EBEFF2;
-  --plan:#1F5C8C;      /* 予定・授業 */
-  --plan-bg:#E3ECF3;
-  --due:#C43D2E;       /* 締切だけに使う */
-  --due-bg:#F7E3E0;
-  --today:#0E8F7E;     /* 今日だけに使う */
+  --paper:#F6F7F9;
+  --card:#FFFFFF;
+  --out:#EEF1F5;
+  --hover:#EEF4FF;
+  --card-hov:#F8FAFD;    /* カードに触れたとき */
+  --ink:#1E2227;
+  --ink-soft:#585F67;
+  --ink-faint:#8A9199;
+  --rule:#D8DEE8;
+  --rule-soft:#E5EAF1;
+  --rule-faint:#EEF1F5;
+  --plan:#1F5FA8;
+  --plan-bg:#E5EDF6;
+  --due:#A03A2A;
+  --due-bg:#F5E4DF;
+  --accent:#2563EB;
+  --accent-bg:#E8F0FF;
+  --done:#2C7A5B;
+  --today-bg:#F2F7FF;
+  --today-hov:#EAF2FF;
+  --today-line:#D7E5FF;
+  --on-fill:#FFFFFF;
 
   --display:"Hiragino Mincho ProN","Yu Mincho",YuMincho,"Noto Serif JP",serif;
   --body:"Hiragino Sans","Yu Gothic",YuGothic,"Noto Sans JP",system-ui,sans-serif;
   --data:ui-monospace,"SF Mono",Menlo,"Roboto Mono",monospace;
 
   --gap:14px;
-  --radius:3px;
+  --radius:14px;         /* カード・面 */
+  --radius-sm:9px;       /* ボタン・入力欄 */
+  --radius-pill:999px;   /* 丸ボタン・バッジ */
+}
+
+/* テーマ「夜」。:root の値を上書きする。
+   色の役割は紙と共通（--accent＝いま・今日・選択中、--done＝完了）。
+   役割まで変えると、テーマを切り替えるたび意味を覚え直すことになる */
+[data-theme="night"]{
+  --paper:#0D1117;
+  --card:#161C24;
+  --card-hov:#1C242E;
+  --out:#10151B;
+  --hover:#1C242E;
+  --ink:#DCE3EA;
+  --ink-soft:#8B98A6;
+  --ink-faint:#5C6773;
+  --rule:#28313C;
+  --rule-soft:#1E252E;
+  --rule-faint:#181E25;
+  --plan:#58A6FF;
+  --plan-bg:#16324D;
+  --due:#E5786A;
+  --due-bg:#3A1D18;
+  --accent:#22D3EE;
+  --accent-bg:#0E3138;
+  --done:#4ADE80;
+  --today-bg:#141B23;
+  --today-hov:#1A222B;
+  --today-line:#25313C;
+  --on-fill:#0D1117;
 }
 
 *{box-sizing:border-box;margin:0;padding:0}
@@ -59,67 +107,78 @@ button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
    ブラウザ標準の [hidden]{display:none} は、自分で書いた display 指定
    （.row{display:grid} など）に負けるので、ここで明示しておく */
 [hidden]{display:none!important}
-:focus-visible{outline:2px solid var(--today);outline-offset:2px}
+:focus-visible{outline:1px solid var(--accent);outline-offset:2px}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 
 .app{
-  max-width:1180px;margin:0 auto;padding:var(--gap);padding-bottom:96px;
-  /* ホーム画面から全画面で開いたとき、ノッチやホームバーに隠れないようにする */
-  padding-top:calc(var(--gap) + env(safe-area-inset-top));
+  max-width:1180px;margin:0 auto;padding:0 var(--gap) 96px;
+  /* ホーム画面から全画面で開いたとき、ノッチやホームバーに隠れないようにする。
+     上端は上部バー自身が持つ（貼り付いたときに隙間ができないように） */
   padding-left:calc(var(--gap) + env(safe-area-inset-left));
   padding-right:calc(var(--gap) + env(safe-area-inset-right));
 }
 
 /* ---------- ヘッダー ---------- */
-.masthead{
-  display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;
-  padding-bottom:12px;margin-bottom:18px;
-  border-bottom:1px solid var(--ink);
+/* 上部バーは画面に貼り付けておく。
+   0時から24時まで出すと縦に長くなるので、スクロールしても
+   画面の切り替えと日付が見えている必要がある */
+.masthead{display:block;position:sticky;top:0;z-index:30;background:var(--paper);margin:0 calc((var(--gap) + env(safe-area-inset-right)) * -1) 16px calc((var(--gap) + env(safe-area-inset-left)) * -1);padding:calc(var(--gap) + env(safe-area-inset-top)) calc(var(--gap) + env(safe-area-inset-right)) 10px calc(var(--gap) + env(safe-area-inset-left));border-bottom:1px solid var(--rule)}
+
+
+.masthead h1{font-size:17px;font-weight:600;letter-spacing:.03em;line-height:1;color:var(--ink)}
+
+.slash{
+  flex:1;min-width:20px;overflow:hidden;white-space:nowrap;
+  font-family:var(--data);font-size:12px;color:var(--rule);letter-spacing:.08em;
+  user-select:none;
 }
-.masthead h1{
-  font-family:var(--display);
-  font-size:26px;font-weight:600;letter-spacing:.14em;line-height:1;
+.masthead .range{font-size:14px;color:var(--ink-soft);letter-spacing:.02em}
+.masthead .range b{color:var(--accent);font-weight:400;margin-left:6px}
+.mrow{display:flex;align-items:center;gap:12px;min-width:0}
+.mrow .spacer{flex:1}
+.mrow.sub{margin-top:9px}
+.masthead h1{flex:0 0 auto}
+/* 日/週/月は常に右上。上段の右端に置き、折り返しの影響を受けない */
+.viewtabs{display:flex;border:1px solid var(--rule);border-radius:var(--radius-pill);overflow:hidden;flex:0 0 auto;margin-left:auto}
+@media (max-width:520px){
+  .masthead h1{font-size:15px}
+  .mrow{gap:8px}
+  .screens button{padding:8px 12px}
 }
-.masthead .range{
-  font-family:var(--data);font-size:12px;color:var(--ink-soft);
-  letter-spacing:.06em;padding-bottom:2px;
-}
-.masthead .spacer{flex:1}
 .busy{
-  font-size:11px;letter-spacing:.08em;color:var(--ink-soft);
+  font-size:12.5px;letter-spacing:.08em;color:var(--ink-soft);
   padding-bottom:3px;animation:pulse 1.1s ease-in-out infinite;
 }
 @keyframes pulse{0%,100%{opacity:.35}50%{opacity:1}}
 
-/* 読み込み中：中身を薄くして、上に文字を出す */
-#grid{position:relative;min-height:120px}
+/* 読み込み中：中身を薄くして、上に文字を出す。
+   z-index:0 を付けて、中の予定ブロックや現在時刻の線の重なり順を
+   この中だけに閉じ込める。これが無いと、右のタスク欄より前に出てしまう */
+#grid{position:relative;z-index:0;min-height:120px}
 #grid.is-loading > *{opacity:.25}
 #grid.is-loading::after{
   content:attr(data-loading);position:absolute;inset:0;
   display:flex;align-items:center;justify-content:center;
-  font-size:12.5px;letter-spacing:.1em;color:var(--ink-soft);
+  font-size:13px;letter-spacing:.1em;color:var(--ink-soft);
 }
 
 /* まだ保存できていない予定 */
 .ev.unsaved,.bar.unsaved,.chip.unsaved{outline:1px dashed var(--due);outline-offset:-1px}
 
 .pager{display:flex;align-items:center;gap:2px}
-.pager button{
-  width:32px;height:30px;border:1px solid var(--rule);background:#fff;
-  border-radius:var(--radius);font-size:13px;
-}
-.pager button.now{width:auto;padding:0 12px;font-size:12px;letter-spacing:.08em}
+.pager button{width:36px;height:34px;border:1px solid var(--rule);background:var(--card);border-radius:var(--radius-pill);font-size:14.5px;color:var(--ink-soft)}
+.pager button.now{width:auto;padding:0 14px;font-size:13px}
+.pager button:hover{border-color:var(--ink-soft);color:var(--ink)}
 .pager button:hover{border-color:var(--ink)}
 
-.viewtabs{display:flex;border:1px solid var(--ink);border-radius:var(--radius);overflow:hidden}
-.viewtabs button{padding:5px 16px;font-size:13px;letter-spacing:.1em;background:#fff}
+.viewtabs{display:flex;border:1px solid var(--rule);border-radius:var(--radius);overflow:hidden}
+.viewtabs button{padding:7px 15px;font-size:13px;background:var(--card);color:var(--ink-soft)}
 .viewtabs button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
 
 /* ---------- レイアウト ---------- */
-.stage{display:grid;grid-template-columns:1fr 244px;gap:22px;align-items:start}
+.stage{display:block}
 @media (max-width:860px){
   .stage{grid-template-columns:1fr;gap:18px}
-  .rail{order:-1}   /* スマホでは残タスクを一番上に */
 }
 /* 狭い画面では列が潰れるので、横スクロールで幅を確保する */
 @media (max-width:680px){
@@ -128,27 +187,18 @@ button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
 }
 
 /* ---------- 週ビュー：時間割グリッド ---------- */
-.week{
-  display:grid;
-  grid-template-columns:34px repeat(7,1fr);
-  border-top:1px solid var(--rule);
-  border-left:1px solid var(--rule);
-  background:#fff;
-}
-.week > *{
-  border-right:1px solid var(--rule);
-  border-bottom:1px solid var(--rule);
-  min-height:0;
-}
+.week{display:grid;grid-template-columns:34px repeat(7,1fr);border:1px solid var(--rule);border-radius:var(--radius);overflow:hidden;background:var(--card)}
+.week > *{border-right:1px solid var(--rule-soft);border-bottom:1px solid var(--rule-soft);min-height:0}
 .wd{
-  padding:6px 4px;text-align:center;background:var(--paper);
-  font-size:12px;letter-spacing:.08em;
+  padding:7px 3px 8px;text-align:center;background:transparent;
+  font-size:12.5px;letter-spacing:.04em;color:var(--ink-soft);
 }
-.wd .d{font-family:var(--data);font-size:16px;display:block;line-height:1.2}
+.wd .d{font-family:var(--data);font-size:15px;display:block;line-height:1.3;color:var(--ink-soft)}
 .wd.sat{color:var(--plan)}
-.wd.sun{color:var(--due)}
-.wd.is-today{background:var(--today);color:#fff}
-.wd.is-today .d{font-weight:700}
+.wd.sun{color:var(--accent)}
+/* 今日は塗らずに、上端の赤い線と数字の色で示す */
+.wd.is-today{color:var(--accent);box-shadow:inset 0 2px 0 var(--accent)}
+.wd.is-today .d{color:var(--accent)}
 
 /* ---------- 1時間刻みの時間軸 ---------- */
 .hours{
@@ -156,18 +206,18 @@ button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
   display:grid;grid-template-columns:34px repeat(7,1fr);
   position:relative;
 }
-.tcol{background:var(--paper);position:relative;border-right:1px solid var(--rule)}
+.tcol{background:transparent;position:relative;border-right:1px solid var(--rule-soft)}
 .tlabel{
-  position:absolute;right:4px;transform:translateY(-50%);
-  font-family:var(--data);font-size:10px;color:var(--ink-faint);letter-spacing:0;
+  position:absolute;right:5px;transform:translateY(-50%);
+  font-family:var(--data);font-size:12px;color:var(--ink-faint);letter-spacing:.04em;
 }
 .dcol{position:relative;border-right:1px solid var(--rule);cursor:pointer}
 .dcol:last-child{border-right:none}
 /* ここは background ではなく background-color を使うこと。
    短縮形の background は background-image も消すので、下の罫線が消える */
-.dcol.is-today{background-color:#F2FAF8}
-.dcol:hover{background-color:#F4F7F9}
-.dcol.is-today:hover{background-color:#E9F6F3}
+.dcol.is-today{background-color:var(--today-bg)}
+.dcol:hover{background-color:var(--hover)}
+.dcol.is-today:hover{background-color:var(--today-hov)}
 
 /* 背景の横線。要素を並べず、CSSの背景で描く（1描画あたり200個以上のDOMが減る）
    --hour は .hours にJS側から入る（HOUR_PXと必ず一致させるため） */
@@ -181,36 +231,30 @@ button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
 }
 
 /* 時間軸の上に置く予定 */
-.ev{
-  position:absolute;border-radius:var(--radius);padding:2px 5px;
-  font-size:11px;line-height:1.3;text-align:left;overflow:hidden;
-  border-left:2px solid;
-}
+.ev{position:absolute;border-radius:7px;padding:2px 6px;font-size:12.5px;line-height:1.3;text-align:left;overflow:hidden;border-left:2px solid}
 .ev .t{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ev .s{display:block;font-family:var(--data);font-size:9.5px;opacity:.8}
+.ev .s{display:block;font-family:var(--data);font-size:12px;letter-spacing:.04em;opacity:.75}
+.ev .m{display:block;margin-top:2px;font-size:12px;line-height:1.25;opacity:.72;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ev.class{background:var(--cat-bg,var(--plan-bg));color:var(--cat-ink,var(--plan));border-left-color:var(--cat,var(--plan))}
-.ev.event{background:var(--cat-bg,#fff);color:var(--cat-ink,var(--ink));border:1px solid var(--rule);border-left:2px solid var(--cat,var(--ink-soft))}
+.ev.event{background:var(--cat-bg,var(--card));color:var(--cat-ink,var(--ink));border:1px solid var(--rule);border-left:2px solid var(--cat,var(--ink-soft))}
 .ev:hover{filter:brightness(.97);z-index:5}
 .ev.short{padding-top:0}
 .ev.short .s{display:inline;margin-left:5px}
 .ev.short .t{display:inline}
 
 /* いまの時刻 */
-.nowline{position:absolute;left:0;right:0;height:0;border-top:2px solid var(--today);pointer-events:none;z-index:4}
+.nowline{position:absolute;left:0;right:0;height:0;border-top:1px solid var(--accent);pointer-events:none;z-index:4}
 .nowline::before{
   content:'';position:absolute;left:-4px;top:-5px;
-  width:8px;height:8px;border-radius:50%;background:var(--today);
+  width:5px;height:5px;background:var(--accent);
 }
 
 /* コマ・予定チップ */
-.chip{
-  border-radius:var(--radius);padding:4px 5px;font-size:11.5px;line-height:1.35;
-  text-align:left;width:100%;overflow:hidden;
-}
+.chip{border-radius:6px;padding:4px 6px;font-size:12px;line-height:1.35;text-align:left;width:100%;overflow:hidden}
 .chip .t{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.chip .s{display:block;font-family:var(--data);font-size:9.5px;opacity:.75}
+.chip .s{display:block;font-family:var(--data);font-size:12px;opacity:.75}
 .chip.class{background:var(--cat-bg,var(--plan-bg));color:var(--cat-ink,var(--plan));border-left:2px solid var(--cat,var(--plan))}
-.chip.event{background:var(--cat-bg,#fff);color:var(--cat-ink,var(--ink));border:1px solid var(--rule);border-left:2px solid var(--cat,var(--ink-soft))}
+.chip.event{background:var(--cat-bg,var(--card));color:var(--cat-ink,var(--ink));border:1px solid var(--rule);border-left:2px solid var(--cat,var(--ink-soft))}
 .chip.due{background:var(--due-bg);color:var(--due);border-left:2px solid var(--due)}
 
 /* 日をまたぐ予定・終日の予定を置く帯 */
@@ -220,32 +264,73 @@ button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
   grid-auto-rows:20px;min-height:24px;position:relative;
 }
 .band .glabel{
-  grid-column:1;grid-row:1 / -1;background:var(--paper);
-  font-size:9px;color:var(--ink-faint);letter-spacing:.04em;
+  grid-column:1;grid-row:1 / -1;background:transparent;
+  font-family:var(--data);font-size:12px;color:var(--ink-faint);letter-spacing:.1em;
   display:flex;align-items:center;justify-content:center;
   border-right:1px solid var(--rule);
 }
 .band .guide{
   grid-row:1 / -1;border-right:1px solid var(--rule-soft);cursor:pointer;
 }
-.band .guide:hover{background:#F4F7F9}
+.band .guide:hover{background:var(--hover)}
 .band .guide:last-of-type{border-right:none}
 
 /* 帯そのもの（週ビュー・月ビュー共通） */
 .bar{
-  height:18px;margin:1px 3px;border-radius:9px;padding:0 8px;
-  font-size:11px;line-height:18px;text-align:left;
+  height:18px;margin:1px 2px;border-radius:var(--radius-pill);padding:0 9px;
+  font-size:12.5px;line-height:18px;text-align:left;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   position:relative;z-index:1;
 }
-.bar.event{background:var(--cat,var(--plan));color:#fff}
-.bar.due{background:var(--due);color:#fff}
+.bar.event{background:var(--cat,var(--plan));color:var(--on-fill)}
+.bar.due{background:var(--due);color:var(--on-fill)}
 .bar:hover{filter:brightness(1.15)}
-.bar.cutL{border-top-left-radius:0;border-bottom-left-radius:0;margin-left:0;padding-left:5px}
-.bar.cutR{border-top-right-radius:0;border-bottom-right-radius:0;margin-right:0;padding-right:5px}
+.bar.cutL{border-top-left-radius:0;border-bottom-left-radius:0;margin-left:0;padding-left:6px}
+.bar.cutR{border-top-right-radius:0;border-bottom-right-radius:0;margin-right:0;padding-right:6px}
+
+/* ---------- 今日ビュー ----------
+   読むものを減らすのが目的。文字は大きく、行間と余白は広めに取る。
+   時間軸の表にはしない（1日の形を見たいときは週ビューに切り替える） */
+.dayview{max-width:580px}
+
+/* つぎの予定。この画面でいちばん見たいもの */
+.dnext{background:var(--card);border:none;border-radius:var(--radius);padding:16px 18px 18px;margin-bottom:16px;cursor:pointer}
+.dnext:hover{background:var(--card-hov)}
+.dnext .lab{font-size:12.5px;letter-spacing:.1em;color:var(--ink-faint);margin-bottom:7px}
+.dnext .tm{
+  font-family:var(--data);font-size:32px;line-height:1;letter-spacing:-.02em;color:var(--ink);
+}
+.dnext .tm i{font-style:normal;color:var(--ink-faint);font-size:21px;margin:0 3px}
+.dnext .ti{font-size:18px;line-height:1.4;margin-top:12px;color:var(--ink)}
+.dnext .me{font-size:13px;color:var(--ink-soft);margin-top:5px;padding-left:15px}
+.dnext .left{
+  font-size:13px;color:var(--accent);margin-top:12px;
+  padding-top:12px;border-top:1px solid var(--rule-soft);
+}
+.dnext.none{cursor:default;background:transparent;border:1px dashed var(--rule)}
+.dnext.none .me{padding-left:0;margin-top:3px}
+
+.dsec{font-size:12.5px;font-weight:400;letter-spacing:.04em;color:var(--ink-soft);margin:0 0 5px;padding-left:4px;border:none}
+.dlist{list-style:none;margin:0 0 16px;background:var(--card);border-radius:var(--radius);padding:2px 15px}
+.drow{display:flex;align-items:center;gap:13px;padding:12px 0;border-bottom:1px solid var(--rule-faint);cursor:pointer}
+.drow:last-child{border-bottom:none}
+.drow:hover{background:transparent;opacity:.7}
+.drow .dt{
+  font-family:var(--data);font-size:15px;color:var(--ink-soft);
+  min-width:54px;flex:0 0 auto;
+}
+.drow .dn{flex:1;min-width:0;font-size:15px;line-height:1.45;color:var(--ink)}
+.drow.task{cursor:default}
+.drow.task .dn{cursor:pointer}
+.drow .dd{
+  font-family:var(--data);font-size:12.5px;flex:0 0 auto;text-align:right;white-space:nowrap;
+}
+.drow .dd b{font-size:16.5px}
+.drow .tcheck{width:26px;height:26px;font-size:14px;margin-top:0}
+.dempty{font-size:13px;color:var(--ink-faint);line-height:1.8;background:var(--card);border-radius:var(--radius);padding:14px 16px}
 
 /* ---------- 月ビュー ---------- */
-.month{border-top:1px solid var(--rule);border-left:1px solid var(--rule);background:#fff}
+.month{border:1px solid var(--rule);border-radius:var(--radius);overflow:hidden;background:var(--card)}
 .mheads{display:grid;grid-template-columns:repeat(7,1fr)}
 .mheads > *{border-right:1px solid var(--rule);border-bottom:1px solid var(--rule)}
 .mweek{position:relative;display:grid;grid-template-columns:repeat(7,1fr)}
@@ -257,97 +342,66 @@ button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
 }
 .mbars .bar{pointer-events:auto}
 .mspace{flex:0 0 auto}
-.mhead{padding:5px;text-align:center;font-size:11px;letter-spacing:.1em;background:var(--paper)}
-.mhead.sat{color:var(--plan)} .mhead.sun{color:var(--due)}
+.mhead{padding:5px;text-align:center;font-size:12.5px;letter-spacing:.1em;background:var(--paper)}
+.mhead.sat{color:var(--plan)} .mhead.sun{color:var(--accent)}
 .mcell{
   min-height:96px;padding:4px;display:flex;flex-direction:column;gap:2px;cursor:pointer;
 }
-.mcell:hover{background:#F4F7F9}
+.mcell:hover{background:var(--hover)}
 .mcell .n{
-  font-family:var(--data);font-size:13px;color:var(--ink-soft);
+  font-family:var(--data);font-size:14px;color:var(--ink-soft);
   height:18px;display:flex;align-items:center;flex:0 0 auto;
 }
-.mcell.out{background:#F7F8F9}
+.mcell.out{background:var(--out)}
 .mcell.out .n{color:var(--ink-faint)}
 .mcell.is-today .n{
-  background:var(--today);color:#fff;border-radius:9px;
+  background:var(--accent);color:var(--on-fill);border-radius:0;
   width:22px;justify-content:center;font-weight:700;
 }
-.more{font-size:10px;color:var(--ink-faint);padding-left:2px}
+.more{font-size:12px;color:var(--ink-faint);padding-left:2px}
 
-/* ---------- 右レーン（タスク画面への窓） ---------- */
-.rail{
-  background:#fff;border:1px solid var(--rule);border-radius:var(--radius);
-  padding:14px 14px 8px;position:sticky;top:14px;
-}
-.rail h2{
-  font-family:var(--display);font-size:15px;font-weight:600;letter-spacing:.18em;
-  padding-bottom:9px;margin-bottom:4px;border-bottom:1px solid var(--ink);
-}
-.rail-item{
-  display:flex;gap:9px;align-items:baseline;
-  padding:10px 0;border-bottom:1px solid var(--rule-soft);width:100%;text-align:left;
-}
-.rail-item .body{cursor:pointer}
-.rail-item .body:hover .ttl{color:var(--plan)}
-.rail-item:last-child{border-bottom:none}
+
 .dn{
-  font-family:var(--data);font-size:11px;font-weight:400;line-height:1.2;
+  font-family:var(--data);font-size:12.5px;font-weight:400;line-height:1.2;
   min-width:60px;letter-spacing:-.01em;white-space:nowrap;
 }
-.dn b{font-size:17px;font-weight:700;margin:0 1px}
-.dn small{font-size:11px;font-weight:400;letter-spacing:.02em}
-.rail-item .body{flex:1;min-width:0}
-.rail-item .ttl{font-size:13.5px;line-height:1.35;word-break:break-word}
-.rail-item .dt{font-family:var(--data);font-size:10.5px;color:var(--ink-faint);letter-spacing:.03em}
+.dn b{font-size:16.5px;font-weight:700;margin:0 1px}
+.dn small{font-size:12.5px;font-weight:400;letter-spacing:.02em}
 /* 緊急度は色ではなく「濃さ」で表す。
    色相はすべてカテゴリに明け渡してある（色を2つの意味に使うと混ざるため）。
    取り消し線は完了を意味するので、期限切れには絶対に使わない */
 .lv0 .dn{color:var(--ink);font-weight:700}     /* 期限切れ・今日・明日 */
 .lv1 .dn{color:var(--ink-soft)}                /* 1週間以内 */
 .lv2 .dn{color:var(--ink-faint)}               /* それ以降 */
-.rail .empty{color:var(--ink-faint);font-size:12.5px;padding:16px 0;line-height:1.7}
 
 /* ---------- 追加ボタン ---------- */
-.fab{
-  position:fixed;right:20px;z-index:20;
-  /* ホーム画面から全画面で開いたとき、iPhoneのホームバーに重ならないようにする */
-  bottom:calc(20px + env(safe-area-inset-bottom));
-  height:50px;padding:0 22px;border-radius:25px;
-  background:var(--ink);color:var(--paper);
-  font-size:14px;letter-spacing:.1em;
-  box-shadow:0 4px 16px rgba(20,33,43,.28);
-}
-.fab:hover{background:var(--plan)}
+.fab{position:fixed;right:20px;z-index:20;bottom:calc(20px + env(safe-area-inset-bottom));height:54px;padding:0 26px;border-radius:27px;background:var(--ink);color:var(--card);font-size:14.5px;letter-spacing:.06em;border:none}
+.fab:hover{background:var(--accent);color:var(--on-fill)}
 
 /* ---------- 入力シート ---------- */
 dialog{
   border:none;padding:0;background:transparent;max-width:100%;
 }
 dialog::backdrop{background:rgba(20,33,43,.42)}
-.sheet{
-  background:#fff;border-radius:var(--radius);
-  width:min(430px,calc(100vw - 24px));padding:20px;
-  border-top:3px solid var(--ink);
-}
-.sheet h3{font-family:var(--display);font-size:17px;letter-spacing:.12em;margin-bottom:16px}
+.sheet{background:var(--card);border-radius:var(--radius);width:min(430px,calc(100vw - 24px));padding:22px;border:none}
+.sheet h3{font-family:var(--display);font-size:16.5px;letter-spacing:.12em;margin-bottom:16px}
 .kinds{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:16px}
 .kinds button{
-  padding:9px 4px;border:1px solid var(--rule);border-radius:var(--radius);
-  font-size:12.5px;background:#fff;
+  padding:9px 4px;border:1px solid var(--rule);border-radius:var(--radius-sm);
+  font-size:13px;background:var(--card);
 }
-.kinds button[aria-pressed="true"]{border-color:var(--ink);background:var(--ink);color:#fff}
+.kinds button[aria-pressed="true"]{border-color:var(--ink);background:var(--ink);color:var(--on-fill)}
 .field{margin-bottom:13px}
-.field label{display:block;font-size:11px;letter-spacing:.08em;color:var(--ink-soft);margin-bottom:4px}
+.field label{display:block;font-size:12.5px;letter-spacing:.08em;color:var(--ink-soft);margin-bottom:4px}
 .lab-row{display:flex!important;align-items:baseline;justify-content:space-between;gap:8px}
 .mini-link{
-  font-size:11px;letter-spacing:.04em;color:var(--plan);
+  font-size:12.5px;letter-spacing:.04em;color:var(--plan);
   text-decoration:underline;text-underline-offset:2px;padding:2px 0;
 }
 .mini-link:hover{color:var(--ink)}
 .field input,.field select,.field textarea{
   width:100%;padding:8px 9px;border:1px solid var(--rule);border-radius:var(--radius);
-  font:inherit;font-size:14px;background:#fff;color:var(--ink);
+  font:inherit;font-size:14.5px;background:var(--card);color:var(--ink);
 }
 /* 日付・時刻・曜日は枠ごと押して選ぶので、押せることが分かる見た目にする。
    min-height はスマホで指で押しやすい大きさの確保 */
@@ -387,26 +441,30 @@ dialog::backdrop{background:rgba(20,33,43,.42)}
 }
 .cat-row input[type="color"]{
   width:34px;height:34px;padding:2px;flex:0 0 auto;cursor:pointer;
-  border:1px solid var(--rule);border-radius:var(--radius);background:#fff;
+  border:1px solid var(--rule);border-radius:var(--radius);background:var(--card);
 }
 .cat-row input[type="text"]{flex:1;min-width:0}
+.cat-moves{display:flex;gap:3px;flex:0 0 auto}
+.cat-move{width:28px;height:30px;border:1px solid var(--rule);border-radius:var(--radius-sm);font-size:13px;color:var(--ink-soft);background:var(--card)}
+.cat-move:hover:not(:disabled){border-color:var(--accent);color:var(--accent);background:var(--accent-bg)}
+.cat-move:disabled{opacity:.28;cursor:default}
 .cat-del{
-  flex:0 0 auto;width:30px;height:30px;border-radius:var(--radius);
+  flex:0 0 auto;width:30px;height:30px;border-radius:var(--radius-sm);
   color:var(--ink-faint);font-size:15px;line-height:1;
 }
 .cat-del:hover{background:var(--due-bg);color:var(--due)}
 .cat-add{
   display:block;width:100%;margin-top:11px;padding:9px;
-  border:1px dashed var(--rule);border-radius:var(--radius);
-  font-size:12.5px;color:var(--ink-soft);
+  border:1px dashed var(--rule);border-radius:var(--radius-sm);
+  font-size:13px;color:var(--ink-soft);
 }
 .cat-add:hover{border-color:var(--ink-soft);color:var(--ink)}
 
 .cats{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:6px}
 .cats button{
   display:flex;align-items:center;gap:7px;
-  padding:8px 10px;border:1px solid var(--rule);border-radius:var(--radius);
-  font-size:12.5px;background:#fff;text-align:left;
+  padding:8px 10px;border:1px solid var(--rule);border-radius:var(--radius-sm);
+  font-size:13px;background:var(--card);text-align:left;
 }
 .cats button i{
   width:10px;height:10px;border-radius:50%;flex:0 0 auto;
@@ -416,96 +474,113 @@ dialog::backdrop{background:rgba(20,33,43,.42)}
 
 .periods{display:grid;grid-template-columns:repeat(6,1fr);gap:5px}
 .periods button{
-  padding:7px 2px;border:1px solid var(--rule);border-radius:var(--radius);
-  font-size:11px;background:#fff;font-family:var(--data);
+  padding:7px 2px;border:1px solid var(--rule);border-radius:var(--radius-sm);
+  font-size:12.5px;background:var(--card);font-family:var(--data);
 }
 .periods button:hover{border-color:var(--ink);background:var(--plan-bg)}
-.hint{font-size:11px;color:var(--ink-faint);line-height:1.5;margin:-4px 0 13px}
-.err{font-size:12px;color:var(--due);line-height:1.5;margin:-4px 0 13px}
+.hint{font-size:12.5px;color:var(--ink-faint);line-height:1.5;margin:-4px 0 13px}
+.err{font-size:13px;color:var(--due);line-height:1.5;margin:-4px 0 13px}
 .acts{display:flex;gap:9px;margin-top:19px;align-items:center}
 .acts .spacer{flex:1}
-.acts button{padding:9px 18px;border-radius:var(--radius);font-size:13.5px;letter-spacing:.06em}
-.btn-save{background:var(--ink);color:#fff}
+.acts button{padding:9px 18px;border-radius:var(--radius-sm);font-size:14px;letter-spacing:.06em}
+.btn-save{background:var(--ink);color:var(--on-fill)}
 .btn-save:hover{background:var(--plan)}
 .btn-cancel{border:1px solid var(--rule)}
-.btn-del{color:var(--due);font-size:12.5px}
+.btn-del{color:var(--due);font-size:13px}
 
 .warn{
   background:var(--due-bg);color:var(--due);
   border-left:3px solid var(--due);border-radius:var(--radius);
-  padding:11px 14px;margin-bottom:16px;font-size:12.5px;line-height:1.6;
+  padding:11px 14px;margin-bottom:16px;font-size:13px;line-height:1.6;
 }
 .warn strong{font-weight:700}
 .warn b{font-weight:700}
-.warn-detail{display:inline-block;margin-top:4px;font-size:11px;opacity:.7}
+.warn-detail{display:inline-block;margin-top:4px;font-size:12.5px;opacity:.7}
+.warn-go{
+  display:inline-block;margin-left:10px;padding:5px 14px;
+  border:1px solid var(--due);border-radius:var(--radius-pill);
+  font-size:12.5px;color:var(--due);background:var(--card);
+}
+.warn-go:hover{background:var(--due);color:var(--on-fill)}
+
+/* ---------- 手触り ----------
+   動きはすべて短く、控えめに。prefers-reduced-motion のときは
+   ファイル冒頭の一括指定でまとめて止まる */
+
+/* 押した瞬間に少しへこむ。押せたことが指で分かる */
+.fab:active,.pager button:active,.viewtabs button:active,.screens button:active,
+.kinds button:active,.cats button:active,.periods button:active,
+.acts button:active,.tools button:active,
+.tcheck:active,.tpick:active,.cat-del:active,.cat-add:active{transform:scale(.94)}
+.chip:active,.bar:active,.ev:active,.trow:active,.drow:active{opacity:.65}
+.fab,.pager button,.viewtabs button,.screens button,.kinds button,.cats button,
+.periods button,.acts button,.tools button,.tcheck,.tpick,
+.cat-del,.cat-add{transition:transform .08s ease-out,background .12s,border-color .12s,color .12s}
+
+/* 画面を切り替えたときだけ、短く浮かび上がらせる。
+   予定を1件足しただけの再描画では動かさない（毎回動くとうるさい） */
+@keyframes enter{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+#grid.enter{animation:enter .16s ease-out}
+
+/* 完了にしたとき、消える前に一瞬だけチェックが入る */
+.trow.checking,.drow.checking{
+  transition:opacity .22s ease-in,transform .22s ease-in;
+  opacity:.2;transform:translateX(10px);
+}
+.trow.checking .tcheck,.drow.checking .tcheck{
+  background:var(--done);border-color:var(--done);color:var(--on-fill);transform:scale(1.15);
+}
+
+/* 指で押せる大きさを確保する。見た目は変えず、当たり判定だけ広げる */
+.tcheck,.tpick,.cat-del{position:relative}
+.tcheck::after,.tpick::after,.cat-del::after{content:'';position:absolute;inset:-11px}
+@media (max-width:680px){
+  .pager button{height:38px}
+  .screens button,.viewtabs button{padding-top:9px;padding-bottom:9px}
+  .tools button{padding:6px 0}
+}
 
 /* ---------- 画面切り替え ---------- */
-.screens{display:flex;gap:2px;align-self:flex-end;padding-bottom:1px}
-.screens button{
-  padding:5px 14px;font-size:13px;letter-spacing:.06em;
-  border-bottom:2px solid transparent;color:var(--ink-faint);
-}
-.screens button[aria-pressed="true"]{color:var(--ink);border-bottom-color:var(--ink);font-weight:600}
-.badge{
-  display:inline-block;margin-left:6px;min-width:17px;padding:0 5px;
-  background:var(--due);color:#fff;border-radius:9px;
-  font-family:var(--data);font-size:10px;line-height:16px;text-align:center;vertical-align:1px;
-}
+.screens{display:flex;gap:0;align-self:center}
+.screens button{padding:7px 15px;font-size:13px;letter-spacing:.02em;color:var(--ink-faint);border:1px solid transparent;border-radius:var(--radius-pill)}
+.screens button[aria-pressed="true"]{color:var(--card);background:var(--ink)}
+.badge{display:inline-block;margin-left:8px;min-width:20px;padding:0 6px;background:var(--accent);color:var(--on-fill);border-radius:10px;font-family:var(--data);font-size:12px;line-height:18px;text-align:center;vertical-align:1px}
 .badge:empty{display:none}
 
-/* ---------- 右レーン（タスク画面への窓） ---------- */
-.rail-go{
-  display:block;width:100%;margin-top:10px;padding:8px;
-  border:1px solid var(--rule);border-radius:var(--radius);
-  font-size:12px;letter-spacing:.06em;color:var(--ink-soft);
-}
-.rail-go:hover{border-color:var(--ink);color:var(--ink)}
-.rail-more{font-size:11px;color:var(--ink-faint);padding-top:8px}
 
 /* ---------- タスク画面 ---------- */
-.tasks{background:#fff;border:1px solid var(--rule);border-radius:var(--radius);padding:6px 18px 14px}
+.tasks{background:var(--card);border:none;border-radius:var(--radius);padding:4px 18px 16px}
 .tgroup{padding-top:14px}
 .tcount{
-  margin-left:8px;font-family:var(--data);font-size:11px;font-weight:400;
-  color:var(--ink-faint);letter-spacing:0;
+  margin-left:auto;font-family:var(--data);font-size:12px;font-weight:400;
+  color:var(--ink-faint);letter-spacing:.1em;
 }
-.tgroup > h3{
-  font-family:var(--display);font-size:13px;font-weight:600;letter-spacing:.16em;
-  color:var(--ink-soft);padding-bottom:7px;margin-bottom:2px;
-  border-bottom:1px solid var(--rule);
-}
-/* 期限切れは「見出しの強さ」で示す。色ではなく構造で伝える */
-.tgroup.overdue > h3{color:var(--ink);border-bottom-color:var(--ink);border-bottom-width:2px}
+.tgroup > h3{display:flex;align-items:baseline;font-size:13px;font-weight:600;letter-spacing:.06em;color:var(--ink-soft);padding-bottom:8px;margin-bottom:3px;border-bottom:1px solid var(--rule)}
+/* 期限切れは「見出しの強さ」で示す。色相ではなく構造で伝える */
+.tgroup.overdue > h3{color:var(--ink);border-bottom-color:var(--ink)}
+
 .tgroup.overdue .trow{background:var(--paper)}
 
-.trow{
-  display:flex;gap:12px;align-items:flex-start;width:100%;text-align:left;
-  padding:11px 2px;border-bottom:1px solid var(--rule-soft);
-}
+.trow{display:flex;gap:12px;align-items:flex-start;width:100%;text-align:left;padding:12px 2px;border-bottom:1px solid var(--rule-faint)}
 .trow:last-child{border-bottom:none}
-.tcheck{
-  flex:0 0 auto;width:19px;height:19px;margin-top:1px;
-  border:1.5px solid var(--rule);border-radius:50%;
-  display:flex;align-items:center;justify-content:center;
-  font-size:11px;color:transparent;
-}
-.tcheck:hover{border-color:var(--today)}
-.trow.is-done .tcheck{background:var(--today);border-color:var(--today);color:#fff}
+.tcheck{flex:0 0 auto;width:20px;height:20px;margin-top:1px;border:1.5px solid var(--rule);border-radius:var(--radius-pill);display:flex;align-items:center;justify-content:center;font-size:12px;color:transparent}
+.tcheck:hover{border-color:var(--done)}
+.trow.is-done .tcheck{background:var(--done);border-color:var(--done);color:var(--on-fill)}
 .tbody{flex:1;min-width:0}
-.ttitle{font-size:14px;line-height:1.4;word-break:break-word}
+.ttitle{display:block;font-size:14.5px;line-height:1.4;word-break:break-word}
 /* カテゴリは小さい点で示す。行ごと塗ると期限の色（緊急度）とぶつかる */
 .cdot{
   display:inline-block;width:7px;height:7px;border-radius:50%;
   margin-right:6px;vertical-align:1px;flex:0 0 auto;
 }
-.tmeta{font-family:var(--data);font-size:10.5px;color:var(--ink-faint);letter-spacing:.03em}
-.tmemo{font-size:11.5px;color:var(--ink-soft);line-height:1.5;margin-top:2px}
+.tmeta{display:block;font-family:var(--data);font-size:12px;color:var(--ink-faint);letter-spacing:.08em}
+.tmemo{display:block;font-size:13px;color:var(--ink-soft);line-height:1.5;margin-top:2px}
 .tdue{
-  flex:0 0 auto;font-family:var(--data);font-size:11px;font-weight:400;
-  min-width:76px;text-align:right;line-height:1.3;white-space:nowrap;
+  flex:0 0 auto;font-family:var(--data);font-size:12px;font-weight:400;
+  min-width:72px;text-align:right;line-height:1.3;white-space:nowrap;letter-spacing:.06em;
 }
 .tdue b{font-size:16px;font-weight:700;letter-spacing:-.02em;margin:0 1px}
-.tdue small{font-size:11px;font-weight:400}
+.tdue small{font-size:12.5px;font-weight:400}
 .lv0 .tdue{color:var(--ink)}
 .lv0 .tdue b{font-weight:700}
 .lv1 .tdue{color:var(--ink-soft)}
@@ -516,198 +591,344 @@ dialog::backdrop{background:rgba(20,33,43,.42)}
 .trow.is-done .tdue{color:var(--ink-faint);font-weight:400}
 
 /* 今日やる：作業台として他と区別する */
-.tgroup.today{
-  background:#F4F8F6;border:1px solid #D6E5DF;border-radius:var(--radius);
-  padding:2px 14px 10px;margin-top:14px;
-}
-.tgroup.today > h3{color:var(--today);border-bottom-color:#CFE2DA}
-.tgroup.today .trow{border-bottom-color:#DFEAE5}
-.tgroup.today .tempty{padding:16px 2px;font-size:12.5px}
+.tgroup.today{background:var(--paper);border:none;border-radius:var(--radius);padding:4px 15px 12px;margin-top:16px;position:relative}
+
+.tgroup.today > h3{color:var(--accent);border-bottom-color:var(--accent)}
+.tgroup.today .trow{border-bottom-color:var(--today-line)}
+.tgroup.today .tempty{padding:16px 2px;font-size:13px}
 
 /* 「今日やる」に上げる／外すボタン */
-.tpick{
-  flex:0 0 auto;width:26px;height:26px;border-radius:50%;
-  border:1px solid var(--rule);background:#fff;
-  font-size:12px;line-height:1;color:var(--ink-faint);
-}
-.tpick:hover{border-color:var(--today);color:var(--today)}
-.tpick.on{border-color:var(--today);color:var(--today);background:#EAF5F1}
+.tpick{flex:0 0 auto;width:26px;height:26px;border-radius:var(--radius-pill);border:1px solid var(--rule);background:var(--card);font-size:12.5px;line-height:1;color:var(--ink-faint)}
+.tpick:hover{border-color:var(--accent);color:var(--accent)}
+.tpick.on{border-color:var(--accent);color:var(--accent);background:var(--accent-bg)}
 .trow:hover .tpick{border-color:var(--ink-soft)}
 
-.rail-label{
-  font-size:10.5px;letter-spacing:.12em;color:var(--today);
-  padding:2px 0 4px;font-weight:600;
-}
-.rail .rail-item .tcheck{width:17px;height:17px;font-size:10px;margin-top:2px}
 
 .tdone-head{
   width:100%;text-align:left;padding:13px 2px 4px;
-  font-size:12px;letter-spacing:.1em;color:var(--ink-faint);
+  font-size:13px;letter-spacing:.1em;color:var(--ink-faint);
 }
 .tdone-head:hover{color:var(--ink-soft)}
-.tempty{color:var(--ink-faint);font-size:13px;line-height:1.8;padding:26px 2px}
+.tempty{color:var(--ink-faint);font-size:14px;line-height:1.8;padding:26px 2px}
+
+/* ---------- 設定シート ---------- */
+.sheet.wide{width:min(520px,calc(100vw - 24px));max-height:82vh;overflow-y:auto}
+.sgroup{padding:16px 0;border-bottom:1px solid var(--rule-faint)}
+.sgroup:first-of-type{padding-top:4px}
+.sgroup:last-of-type{border-bottom:none}
+.sgroup > h4{
+  font-size:12.5px;font-weight:600;letter-spacing:.06em;color:var(--ink-faint);
+  margin-bottom:9px;
+}
+.sline{font-size:15px;color:var(--ink);line-height:1.5}
+.shint{font-size:12px;color:var(--ink-faint);line-height:1.6;margin-top:2px}
+.srow{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.sbtn{
+  padding:9px 16px;border:1px solid var(--rule);border-radius:var(--radius-sm);
+  font-size:13px;color:var(--ink);background:var(--card);
+}
+.sbtn:hover{border-color:var(--ink-soft)}
+
+/* 時限の編集 */
+.prow{display:flex;align-items:center;gap:8px;padding:6px 0}
+.prow .pn{
+  font-family:var(--data);font-size:13px;color:var(--ink-soft);
+  min-width:34px;flex:0 0 auto;
+}
+.prow input[type="time"]{flex:1;min-width:0}
+.prow .tilde{color:var(--ink-faint);font-size:13px}
 
 /* ---------- フッター ---------- */
 .tools{
   margin-top:26px;padding-top:12px;border-top:1px solid var(--rule);
-  display:flex;gap:16px;flex-wrap:wrap;font-size:11.5px;color:var(--ink-faint);
+  display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--ink-faint);
 }
-.tools button{text-decoration:underline;font-size:11.5px;color:var(--ink-soft)}
+.tools button{text-decoration:underline;font-size:13px;color:var(--ink-soft)}
+
+/* 見出しはカードの外。上の余白はここでまとめて持つ */
+.dlist + .dsec,.dempty + .dsec,.dnext + .dsec{margin-top:4px}
+
+
+/* ==========================================================
+   2026 UI refresh — responsive shell and tactile interactions
+   ========================================================== */
+:root{--sidebar:208px;--topbar:72px;--bottom-nav:68px;--shadow:0 16px 40px rgba(30,34,39,.10)}
+[data-theme="night"]{--shadow:0 18px 44px rgba(0,0,0,.32)}
+.visually-hidden{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+.app-shell{min-height:100%;display:grid;grid-template-columns:var(--sidebar) minmax(0,1fr)}
+.side-nav{position:sticky;top:0;height:100dvh;padding:22px 14px calc(18px + env(safe-area-inset-bottom));background:var(--card);border-right:1px solid var(--rule);display:flex;flex-direction:column;z-index:40}
+.side-brand{display:flex;align-items:center;gap:10px;padding:4px 10px 26px;font-size:17px;font-weight:700;letter-spacing:.02em}
+.brand-mark{display:grid;place-items:center;width:28px;height:28px;border-radius:9px;background:var(--accent);color:var(--on-fill);font-family:var(--data);font-size:16px}
+.side-links{display:flex;flex-direction:column;gap:5px}
+.nav-item{position:relative;width:100%;min-height:44px;padding:10px 12px;border-radius:10px;display:flex;align-items:center;gap:11px;color:var(--ink-soft);font-size:14px;text-align:left;transition:background .15s,color .15s,transform .08s}
+.nav-item::before{content:'';position:absolute;left:-14px;top:9px;bottom:9px;width:3px;border-radius:0 3px 3px 0;background:var(--accent);transform:scaleY(0);transition:transform .18s ease}
+.nav-item:hover{background:var(--accent-bg);color:var(--ink)}
+.nav-item[aria-pressed="true"]{background:var(--accent-bg);color:var(--accent);font-weight:600}
+.nav-item[aria-pressed="true"]::before{transform:scaleY(1)}
+.nav-icon{width:20px;text-align:center;font-family:var(--data);font-size:14px}
+.nav-count{margin-left:auto;min-width:22px;padding:1px 6px;border-radius:999px;background:var(--accent);color:var(--on-fill);font-family:var(--data);font-size:12px;text-align:center}
+.nav-count:empty{display:none}.side-settings{margin-top:auto}
+.app{max-width:none;width:100%;margin:0;padding:0 24px 64px;min-width:0}
+.masthead{margin:0 -24px 20px;padding:calc(16px + env(safe-area-inset-top)) 24px 12px;background:color-mix(in srgb,var(--paper) 94%,transparent);backdrop-filter:blur(16px);border-bottom:1px solid var(--rule-soft)}
+.masthead h1{font-size:20px;letter-spacing:-.01em}.mrow{gap:10px}.mrow.sub{margin-top:10px;justify-content:flex-start}.mrow.sub .range{margin-left:12px;font-weight:600;color:var(--ink)}
+.screens{display:none}.viewtabs{margin-left:auto;border-color:var(--rule);border-radius:10px}.viewtabs button{min-width:42px;padding:7px 12px;background:transparent}.viewtabs button[aria-pressed="true"]{background:var(--accent-bg);color:var(--accent)}
+.top-add{height:38px;padding:0 15px;border-radius:10px;background:var(--accent);color:var(--on-fill);font-size:13px;font-weight:600;display:flex;align-items:center;gap:5px;white-space:nowrap;transition:transform .08s,filter .14s}.top-add:hover{filter:brightness(.96)}
+.pager{gap:5px}.pager button{width:34px;height:34px;border-radius:9px;background:var(--card)}.pager button.now{order:-1;padding:0 13px}
+.stage{min-width:0}.tools{margin-top:18px;padding-top:10px;justify-content:flex-end;font-size:12px}.tools button{display:none}
+.week,.month{box-shadow:0 1px 0 color-mix(in srgb,var(--ink) 3%,transparent)}
+.wd.is-today{background:var(--today-bg);box-shadow:inset 0 3px 0 var(--accent)}
+.ev,.chip{border-radius:8px;transition:background .14s,border-color .14s,transform .14s,box-shadow .14s,padding-left .14s}
+.ev{border-left-width:3px;padding-left:7px}.ev.event{border-left-width:3px}.ev:hover{filter:none;z-index:5;transform:translateX(1px);box-shadow:0 5px 14px color-mix(in srgb,var(--ink) 12%,transparent);border-left-width:5px;padding-left:6px}
+.chip:hover{transform:translateY(-1px);box-shadow:0 4px 12px color-mix(in srgb,var(--ink) 10%,transparent)}
+.bar{transition:filter .14s,transform .14s}.bar:hover{filter:brightness(1.06);transform:translateY(-1px)}
+.dcol{--hover-y:0px}.dcol.hovering::before{content:'';position:absolute;left:0;right:0;top:var(--hover-y);height:1px;background:var(--accent);opacity:.42;pointer-events:none;z-index:3}.dcol.hovering::after{content:'＋ ' attr(data-hover-time);position:absolute;left:6px;right:6px;top:calc(var(--hover-y) + 4px);min-height:24px;padding:3px 7px;border:1px dashed color-mix(in srgb,var(--accent) 52%,transparent);border-radius:7px;background:color-mix(in srgb,var(--accent-bg) 88%,transparent);color:var(--accent);font-family:var(--data);font-size:12px;pointer-events:none;z-index:3}
+.nowline::before{border-radius:50%;transition:transform .16s}.dcol.is-today:hover .nowline::before{transform:scale(1.55)}
+.mcell{transition:background .14s,transform .1s}.mcell:active{transform:scale(.985)}.mcell.is-selected .n{outline:2px solid var(--accent);outline-offset:2px}
+.dayview{max-width:720px;margin:0 auto}.dnext,.dlist,.dempty{border:1px solid var(--rule-soft)}
+.tasks-layout{display:grid;grid-template-columns:minmax(260px,310px) minmax(0,1fr);gap:18px;align-items:start}.task-focus{position:sticky;top:calc(var(--head-h,90px) + 16px)}.tasks-panel{background:var(--card);border:1px solid var(--rule-soft);border-radius:var(--radius);padding:4px 18px 16px}.tasks-panel-title{display:flex;align-items:center;justify-content:space-between;padding:16px 2px 7px;font-size:14px}.tasks-panel-title span{font-family:var(--data);font-size:12px;color:var(--ink-faint)}
+.tgroup.today{margin-top:0;background:var(--today-bg);border:1px solid var(--today-line);padding:4px 15px 12px}.tgroup{padding-top:14px}.trow{border-radius:8px;padding:12px 6px;transition:background .14s,transform .14s,opacity .22s}.trow:hover{background:var(--card-hov)}.tgroup.overdue .trow{background:color-mix(in srgb,var(--paper) 72%,var(--card))}.tgroup.overdue .trow:hover{background:var(--card-hov)}
+.tcheck{width:22px;height:22px;transition:background .15s,border-color .15s,transform .15s}.trow.checking .ttitle{text-decoration:line-through;text-decoration-thickness:1px}.tpick{width:28px;height:28px}.just-added{animation:addedPulse .9s ease-out}@keyframes addedPulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 38%,transparent)}45%{box-shadow:0 0 0 7px transparent}100%{box-shadow:none}}
+.settings-page{max-width:760px;margin:0 auto;padding:8px 0 28px}.settings-head{padding:10px 4px 22px}.settings-head h2{font-size:28px;letter-spacing:-.02em}.settings-head>p:last-child{color:var(--ink-soft);margin-top:4px}.eyebrow{font-family:var(--data);font-size:12px;letter-spacing:.18em;color:var(--accent);margin-bottom:3px}.settings-section{padding:20px 2px;border-bottom:1px solid var(--rule-soft)}.settings-section>h3,.settings-title-row h3,.settings-link-row h3{font-size:15px}.settings-desc{font-size:13px;color:var(--ink-soft);margin-top:2px}.settings-title-row,.settings-link-row{display:flex;align-items:flex-start;justify-content:space-between;gap:18px}.status-dot{width:10px;height:10px;border-radius:50%;background:var(--ink-faint);margin-top:7px}.status-dot.on{background:var(--done)}.sync-card .sline{margin-top:13px}.sbtn{min-height:40px}.sbtn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-fill)}
+.theme-choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:14px}.theme-card{display:flex;align-items:center;gap:13px;padding:12px;border:1px solid var(--rule);border-radius:12px;text-align:left;background:var(--card);transition:border-color .14s,background .14s,transform .08s}.theme-card:hover{border-color:var(--ink-soft)}.theme-card[aria-pressed="true"]{border:2px solid var(--accent);padding:11px;background:var(--accent-bg)}.theme-card b,.theme-card small{display:block}.theme-card small{font-size:12px;color:var(--ink-soft);margin-top:2px}.theme-preview{width:62px;height:44px;border-radius:8px;padding:6px;display:flex;flex-direction:column;gap:4px;flex:0 0 auto;border:1px solid var(--rule)}.theme-preview i{display:block;height:6px;border-radius:3px}.paper-preview{background:rgb(246,247,249)}.paper-preview i{background:rgb(220,231,248)}.paper-preview i:nth-child(2){width:72%;background:rgb(233,215,242)}.paper-preview i:nth-child(3){width:55%;background:rgb(241,224,203)}.night-preview{background:rgb(13,17,23)}.night-preview i{background:rgb(25,66,90)}.night-preview i:nth-child(2){width:72%;background:rgb(60,40,80)}.night-preview i:nth-child(3){width:55%;background:rgb(71,57,28)}
+.time-range-setting{display:flex;align-items:end;gap:10px;margin-top:12px}.time-range-setting .field{margin:0;min-width:120px}.settings-details{padding-left:0;padding-right:0}.settings-details summary{list-style:none;display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:0 2px}.settings-details summary::-webkit-details-marker{display:none}.settings-details summary b,.settings-details summary small{display:block}.settings-details summary small{font-size:12px;color:var(--ink-soft);font-weight:400;margin-top:2px}.summary-arrow{font-size:24px;color:var(--ink-faint);transition:transform .16s}.settings-details[open] .summary-arrow{transform:rotate(90deg)}.details-body{padding-top:16px}.settings-link-row{align-items:center}
+.bottom-nav{display:none}
+.sheet{box-shadow:var(--shadow)}.editor-dialog{inset:0 0 0 auto;margin:0;width:min(480px,calc(100vw - 24px));height:100dvh;max-height:none}.editor-dialog .editor-sheet{width:100%;height:100%;max-height:100%;overflow:auto;border-radius:18px 0 0 18px;padding:0 24px 92px}.sheet-head{position:sticky;top:0;z-index:4;display:flex;align-items:center;justify-content:space-between;padding:20px 0 14px;background:var(--card);border-bottom:1px solid var(--rule-faint);margin-bottom:18px}.sheet-head h3{margin:0;font-family:var(--body);font-size:20px;letter-spacing:-.01em}.sheet-close{width:40px;height:40px;border-radius:10px;background:var(--paper);font-size:20px}.form-section{padding:3px 0 7px}.form-section+.form-section{border-top:1px solid var(--rule-faint);padding-top:18px}.form-section-title{font-family:var(--data);font-size:12px;letter-spacing:.16em;color:var(--ink-faint);margin-bottom:10px}.sheet-actions{position:sticky;bottom:-92px;margin:20px -24px -92px;padding:14px 24px calc(14px + env(safe-area-inset-bottom));background:var(--card);border-top:1px solid var(--rule);z-index:5}.editor-dialog[open]{animation:sheetIn .2s ease-out}@keyframes sheetIn{from{transform:translateX(20px);opacity:.75}to{transform:none;opacity:1}}
+.compact-sheet{max-height:88dvh;overflow:auto}.toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:100;padding:10px 16px;border-radius:999px;background:var(--ink);color:var(--card);box-shadow:var(--shadow);font-size:13px}.toast.show{animation:toastIn .2s ease-out}@keyframes toastIn{from{opacity:0;transform:translate(-50%,8px)}to{opacity:1;transform:translate(-50%,0)}}
+.fab{display:none}.fab:active,.pager button:active,.viewtabs button:active,.screens button:active,.kinds button:active,.cats button:active,.periods button:active,.acts button:active,.tools button:active,.tcheck:active,.tpick:active,.cat-del:active,.cat-add:active,.top-add:active,.nav-item:active,.theme-card:active,.bottom-nav button:active{transform:scale(.98)}
+#grid.enter-next{animation:enterNext .17s ease-out}#grid.enter-prev{animation:enterPrev .17s ease-out}@keyframes enterNext{from{opacity:0;transform:translateX(10px)}to{opacity:1;transform:none}}@keyframes enterPrev{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:none}}
+
+@media (max-width:1179px){
+  .app-shell{display:block}.side-nav{display:none}.app{max-width:1180px;margin:0 auto;padding-left:18px;padding-right:18px}.masthead{margin-left:-18px;margin-right:-18px;padding-left:18px;padding-right:18px}.screens{display:flex}.masthead h1{font-size:17px}.tasks-layout{grid-template-columns:1fr}.task-focus{position:static}.tasks-panel-title{padding-top:12px}
+  .editor-dialog{width:min(560px,calc(100vw - 24px));inset:50% auto auto 50%;transform:translate(-50%,-50%);height:min(92dvh,820px);margin:0}.editor-dialog .editor-sheet{border-radius:18px;height:100%}.editor-dialog[open]{animation:dialogIn .18s ease-out}@keyframes dialogIn{from{opacity:0;transform:translate(-50%,calc(-50% + 8px))}to{opacity:1;transform:translate(-50%,-50%)}}
+}
+@media (max-width:767px){
+  body{font-size:14px}.app{padding:0 12px calc(var(--bottom-nav) + 24px + env(safe-area-inset-bottom))}.masthead{margin:0 -12px 14px;padding:calc(10px + env(safe-area-inset-top)) 12px 9px}.masthead h1{font-size:18px}.screens{display:none}.mrow{gap:7px}.viewtabs{margin-left:auto}.viewtabs button{min-width:36px;padding:6px 9px}.top-add{width:40px;height:40px;padding:0;justify-content:center;border-radius:11px}.top-add #addLabel{display:none}.add-symbol{font-size:20px}.mrow.sub{margin-top:7px}.mrow.sub .range{order:-1;margin:0 auto 0 0;font-size:13px}.pager button.now{display:none}.pager button{width:38px;height:36px}.tools{display:none}
+  #grid{overflow-x:auto}.week{min-width:650px}.bottom-nav{position:fixed;display:grid;grid-template-columns:repeat(4,1fr);left:0;right:0;bottom:0;z-index:60;min-height:calc(var(--bottom-nav) + env(safe-area-inset-bottom));padding:7px max(4px,env(safe-area-inset-right)) env(safe-area-inset-bottom) max(4px,env(safe-area-inset-left));background:color-mix(in srgb,var(--card) 94%,transparent);backdrop-filter:blur(18px);border-top:1px solid var(--rule)}.bottom-nav button{position:relative;min-height:54px;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:12px;color:var(--ink-faint);transition:background .16s,color .16s,transform .08s}.bottom-nav button[aria-pressed="true"]{color:var(--accent);background:var(--accent-bg)}.bottom-icon{font-family:var(--data);font-size:16px;line-height:1}.mobile-badge{position:absolute;top:4px;left:calc(50% + 7px);min-width:17px;padding:0 4px;border-radius:8px;background:var(--accent);color:var(--on-fill);font-family:var(--data);font-size:12px;line-height:16px}.mobile-badge:empty{display:none}
+  .dayview{max-width:none}.dnext .tm{font-size:28px}.month{min-width:0}.mheads,.mweek,.mbars{grid-template-columns:repeat(7,minmax(0,1fr))}.mcell{min-width:0;min-height:82px;padding:3px 2px;overflow:hidden}.mhead{padding:4px 1px}.mcell .chip{max-width:100%;font-size:12px;padding:3px 3px}.mcell .chip .s{display:none}.mcell .chip .t{overflow:hidden;text-overflow:ellipsis}.more{font-size:12px;white-space:nowrap;overflow:hidden}.tasks-layout{display:block}.tasks-panel{padding:2px 12px 12px}.task-focus{margin-bottom:14px}.trow{gap:9px;padding:13px 4px}.tdue{min-width:58px}.tmemo{display:none}
+  .settings-page{padding:0 2px 14px}.settings-head h2{font-size:24px}.theme-choices{grid-template-columns:1fr}.settings-section{padding:18px 2px}.settings-link-row{align-items:center}.time-range-setting{display:grid;grid-template-columns:1fr auto 1fr auto;gap:7px}.time-range-setting .field{min-width:0}
+  .editor-dialog{inset:auto 0 0 0;transform:none;width:100%;height:96dvh;max-height:96dvh}.editor-dialog .editor-sheet{border-radius:18px 18px 0 0;padding:0 18px 86px}.sheet-actions{bottom:-86px;margin-left:-18px;margin-right:-18px;margin-bottom:-86px;padding-left:18px;padding-right:18px}.editor-dialog[open]{animation:mobileSheetIn .22s ease-out}@keyframes mobileSheetIn{from{transform:translateY(24px);opacity:.85}to{transform:none;opacity:1}}.periods{grid-template-columns:repeat(3,1fr)}.cats{grid-template-columns:repeat(2,minmax(0,1fr))}.compact-sheet{width:calc(100vw - 20px);max-height:90dvh}.toast{bottom:calc(var(--bottom-nav) + 18px + env(safe-area-inset-bottom));max-width:calc(100vw - 28px);white-space:nowrap}
+}
+
 </style>
 </head>
 <body>
+<div class="app-shell">
+  <aside class="side-nav" aria-label="メインナビゲーション">
+    <div class="side-brand"><span class="brand-mark">s</span><span>schedule</span></div>
+    <nav class="side-links">
+      <button id="sideCal" class="nav-item" aria-pressed="true"><span class="nav-icon">▦</span><span>カレンダー</span></button>
+      <button id="sideToday" class="nav-item" aria-pressed="false"><span class="nav-icon">●</span><span>今日</span></button>
+      <button id="sideTask" class="nav-item" aria-pressed="false"><span class="nav-icon">✓</span><span>タスク</span><span class="nav-count" id="sideTaskCount"></span></button>
+    </nav>
+    <button id="sideSettings" class="nav-item side-settings" aria-pressed="false"><span class="nav-icon">⚙</span><span>設定</span></button>
+  </aside>
 
-<div class="app">
-  <header class="masthead">
-    <h1>じかんわり</h1>
-    <div class="screens">
-      <button id="tabCal"  aria-pressed="true">カレンダー</button>
-      <button id="tabTask" aria-pressed="false">タスク<span class="badge" id="tabTaskCount"></span></button>
-    </div>
-    <span class="range" id="range"></span>
-    <span class="busy" id="busy" hidden>保存中…</span>
-    <span class="spacer"></span>
-    <div class="pager" id="pager">
-      <button id="prev" aria-label="前へ">‹</button>
-      <button id="now" class="now">今日</button>
-      <button id="next" aria-label="次へ">›</button>
-    </div>
-    <div class="viewtabs" id="viewtabs">
-      <button id="tabWeek" aria-pressed="true">週</button>
-      <button id="tabMonth" aria-pressed="false">月</button>
-    </div>
-  </header>
+  <div class="app">
+    <header class="masthead">
+      <div class="mrow">
+        <h1 id="pageTitle">schedule</h1>
+        <div class="screens">
+          <button id="tabCal" aria-pressed="true">カレンダー</button>
+          <button id="tabTask" aria-pressed="false">タスク<span class="badge" id="tabTaskCount"></span></button>
+          <button id="setOpen" aria-pressed="false">設定</button>
+        </div>
+        <span class="busy" id="busy" hidden>保存中…</span>
+        <span class="spacer"></span>
+        <div class="viewtabs" id="viewtabs">
+          <button id="tabDay" aria-pressed="false">日</button>
+          <button id="tabWeek" aria-pressed="true">週</button>
+          <button id="tabMonth" aria-pressed="false">月</button>
+        </div>
+        <button class="top-add" id="add"><span class="add-symbol">＋</span><span id="addLabel">予定を追加</span></button>
+      </div>
+      <div class="mrow sub" id="subrow">
+        <div class="pager" id="pager">
+          <button id="now" class="now">今日</button>
+          <button id="prev" aria-label="前へ">‹</button>
+          <button id="next" aria-label="次へ">›</button>
+        </div>
+        <span class="range" id="range"></span>
+      </div>
+    </header>
 
-  <p class="warn" id="warn" hidden>
-    <strong>保存できていない。</strong>
-    このページを閉じると入力が消える。下の「データを書き出す」でJSONを保存しておいて。
-  </p>
+    <p class="warn" id="warn" hidden>
+      <strong>保存できていない。</strong>
+      このページを閉じると入力が消える。設定の「データを書き出す」でJSONを保存しておいて。
+    </p>
 
-  <div class="stage" id="stage">
-    <section id="grid"></section>
-    <aside class="rail" id="railBox">
-      <h2>タスク<span class="badge" id="railCount"></span></h2>
-      <div id="rail"></div>
-      <button class="rail-go" id="railGo">タスク画面へ →</button>
-    </aside>
+    <div class="stage" id="stage">
+      <section id="grid"></section>
+
+      <section id="setDlg" class="settings-page" hidden aria-labelledby="settingsTitle">
+        <div class="settings-head">
+          <h2 id="settingsTitle">設定</h2>
+          <p>アプリの表示、同期、入力補助を管理します。</p>
+        </div>
+
+        <section class="settings-section sync-card">
+          <div class="settings-title-row">
+            <div><h3>Googleカレンダー</h3><p class="settings-desc">端末間の予定とタスクを同期します。</p></div>
+            <span class="status-dot" id="syncDot" aria-hidden="true"></span>
+          </div>
+          <p class="sline" id="syncState">この端末のみ</p>
+          <p class="shint" id="syncWhen"></p>
+          <div class="srow">
+            <button class="sbtn primary" id="gsync">Googleカレンダーとつなぐ</button>
+            <button class="sbtn" id="gresync" hidden>再同期</button>
+          </div>
+        </section>
+
+        <section class="settings-section">
+          <h3>外観</h3>
+          <p class="settings-desc">選択するとすぐに画面へ反映されます。</p>
+          <div class="theme-choices" id="themeChoices">
+            <button type="button" class="theme-card" data-theme-choice="paper" aria-pressed="true">
+              <span class="theme-preview paper-preview"><i></i><i></i><i></i></span>
+              <span><b>Paper</b><small>明るく落ち着いた表示</small></span>
+            </button>
+            <button type="button" class="theme-card" data-theme-choice="night" aria-pressed="false">
+              <span class="theme-preview night-preview"><i></i><i></i><i></i></span>
+              <span><b>Night</b><small>暗所でも見やすい表示</small></span>
+            </button>
+          </div>
+          <label class="visually-hidden" for="fTheme">テーマ</label>
+          <select id="fTheme" class="visually-hidden" tabindex="-1"></select>
+        </section>
+
+        <section class="settings-section">
+          <h3>カレンダー表示</h3>
+          <p class="settings-desc">週ビューに表示する時間帯です。</p>
+          <div class="time-range-setting">
+            <div class="field"><label for="fDayStart">開始</label><select id="fDayStart"></select></div>
+            <span>から</span>
+            <div class="field"><label for="fDayEnd">終了</label><select id="fDayEnd"></select></div>
+            <span>まで</span>
+          </div>
+        </section>
+
+        <details class="settings-section settings-details">
+          <summary><span><b>時限</b><small>授業入力時の開始・終了時刻</small></span><span class="summary-arrow">›</span></summary>
+          <div class="details-body">
+            <p class="shint">「時限から入れる」ボタンで入る時刻。自分の大学に合わせて。</p>
+            <div id="periodEdit"></div>
+            <button class="cat-add" id="periodAdd">＋ 時限を追加</button>
+          </div>
+        </details>
+
+        <section class="settings-section settings-link-row">
+          <div><h3>種類</h3><p class="sline" id="catSummary"></p></div>
+          <button class="sbtn" id="catOpen">色と名前を編集</button>
+        </section>
+
+        <section class="settings-section">
+          <h3>データ管理</h3>
+          <p class="settings-desc">別の端末へ移すときや、控えを取るときに使います。</p>
+          <div class="srow">
+            <button class="sbtn" id="export">データを書き出す</button>
+            <button class="sbtn" id="import">データを読み込む</button>
+          </div>
+        </section>
+        <button id="setSave" hidden>閉じる</button>
+      </section>
+    </div>
+
+    <div class="tools" aria-label="状態">
+      <span id="gstate"></span>
+      <span id="count"></span>
+    </div>
   </div>
 
-  <div class="tools">
-    <button id="gsync">Googleカレンダーとつなぐ</button>
-    <span id="gstate"></span>
-    <button id="catOpen">種類を編集</button>
-    <button id="export">データを書き出す（JSON）</button>
-    <button id="import">データを読み込む</button>
-    <span id="count"></span>
-  </div>
+  <nav class="bottom-nav" aria-label="メインナビゲーション">
+    <button id="mobileToday" aria-pressed="true"><span class="bottom-icon">●</span><span>今日</span></button>
+    <button id="mobileCal" aria-pressed="false"><span class="bottom-icon">▦</span><span>カレンダー</span></button>
+    <button id="mobileTask" aria-pressed="false"><span class="bottom-icon">✓</span><span>タスク</span><span class="mobile-badge" id="mobileTaskCount"></span></button>
+    <button id="mobileSettings" aria-pressed="false"><span class="bottom-icon">⚙</span><span>設定</span></button>
+  </nav>
 </div>
 
-<button class="fab" id="add">＋ 追加</button>
-
 <dialog id="catDlg">
-  <div class="sheet">
-    <h3>種類を編集</h3>
+  <div class="sheet compact-sheet">
+    <div class="sheet-head"><div><h3>種類を編集</h3></div><button class="sheet-close" id="catClose" aria-label="閉じる">×</button></div>
     <p class="hint">色と名前は好きに決めていい。並び順もそのまま入力画面に出る。</p>
     <div id="catEdit"></div>
     <button class="cat-add" id="catAdd">＋ 種類を追加</button>
     <p class="hint" id="catNote"></p>
-    <div class="acts">
-      <button class="btn-save" id="catSave">保存</button>
+    <div class="acts sheet-actions">
       <button class="btn-cancel" id="catCancel">やめる</button>
+      <button class="btn-save" id="catSave">保存</button>
     </div>
   </div>
 </dialog>
 
-<dialog id="dlg">
-  <div class="sheet">
-    <h3 id="dlgTitle">予定を追加</h3>
+<dialog id="dlg" class="editor-dialog">
+  <div class="sheet editor-sheet">
+    <div class="sheet-head">
+      <div><h3 id="dlgTitle">予定を追加</h3></div>
+      <button class="sheet-close" id="dlgClose" aria-label="閉じる">×</button>
+    </div>
 
     <div class="kinds" id="kinds">
-      <button data-kind="class"  aria-pressed="false">授業（毎週）</button>
-      <button data-kind="event"  aria-pressed="true">予定</button>
-      <button data-kind="task"   aria-pressed="false">タスク</button>
+      <button data-kind="class" aria-pressed="false">授業</button>
+      <button data-kind="event" aria-pressed="true">予定</button>
+      <button data-kind="task" aria-pressed="false">タスク</button>
     </div>
 
-    <div class="field">
-      <label for="fTitle">タイトル</label>
-      <input id="fTitle" type="text" placeholder="例：統計学 / レポート提出">
-    </div>
-
-    <div class="field">
-      <label class="lab-row">種類
-        <button type="button" class="mini-link" id="catOpen2">色と名前を編集</button>
-      </label>
-      <div class="cats" id="catPicks"></div>
-    </div>
-
-    <!-- 授業用：曜日 -->
-    <div class="field" id="classFields" hidden>
-      <label for="fWeekday">曜日</label>
-      <select id="fWeekday">
-        <option value="1">月</option><option value="2">火</option>
-        <option value="3">水</option><option value="4">木</option>
-        <option value="5">金</option><option value="6">土</option>
-        <option value="0">日</option>
-      </select>
-    </div>
-
-    <!-- 授業用：時限を押すと下の時刻が埋まる -->
-    <div class="field" id="periodField" hidden>
-      <label>時限から入れる</label>
-      <div class="periods" id="periodPicks"></div>
-    </div>
-
-    <!-- 予定・タスク用：日付 -->
-    <div id="dateFields">
-      <div class="row">
-        <div class="field">
-          <label for="fDate" id="labDate">開始日</label>
-          <input id="fDate" type="date">
-        </div>
-        <div class="field" id="endDateField">
-          <label for="fEndDate">終了日</label>
-          <input id="fEndDate" type="date">
-        </div>
-      </div>
-    </div>
-
-    <!-- 時刻（授業・予定 共通） -->
-    <div class="row" id="timeRow">
+    <section class="form-section">
+      <p class="form-section-title">基本情報</p>
       <div class="field">
-        <label for="fStart" id="labStart">開始時刻</label>
-        <input id="fStart" type="time">
+        <label for="fTitle">タイトル</label>
+        <input id="fTitle" type="text" placeholder="例：統計学 / レポート提出">
       </div>
-      <div class="field" id="endTimeField">
-        <label for="fEnd">終了時刻</label>
-        <input id="fEnd" type="time">
+      <div class="field">
+        <label>種類</label>
+        <button type="button" class="mini-link" id="catOpen2" hidden>色と名前を編集</button>
+        <div class="cats" id="catPicks"></div>
       </div>
-    </div>
+    </section>
 
-    <p class="hint" id="hintSpan">終了日を先の日付にすると、日をまたぐ予定になるよ。</p>
+    <section class="form-section">
+      <p class="form-section-title">日程</p>
+      <div class="field" id="classFields" hidden>
+        <label for="fWeekday">曜日</label>
+        <select id="fWeekday">
+          <option value="1">月</option><option value="2">火</option><option value="3">水</option>
+          <option value="4">木</option><option value="5">金</option><option value="6">土</option><option value="0">日</option>
+        </select>
+      </div>
+      <div class="field" id="periodField" hidden>
+        <label>時限から入力</label><div class="periods" id="periodPicks"></div>
+      </div>
+      <div id="dateFields">
+        <div class="row">
+          <div class="field"><label for="fDate" id="labDate">開始日</label><input id="fDate" type="date"></div>
+          <div class="field" id="endDateField"><label for="fEndDate">終了日</label><input id="fEndDate" type="date"></div>
+        </div>
+      </div>
+      <div class="row" id="timeRow">
+        <div class="field"><label for="fStart" id="labStart">開始時刻</label><input id="fStart" type="time"></div>
+        <div class="field" id="endTimeField"><label for="fEnd">終了時刻</label><input id="fEnd" type="time"></div>
+      </div>
+      <p class="hint" id="hintSpan">終了日を先の日付にすると、日をまたぐ予定になるよ。</p>
+      <div class="field" id="termField" hidden><label for="fTermEnd">いつまで（空なら期限なし）</label><input id="fTermEnd" type="date"></div>
+    </section>
 
-    <!-- 授業用：学期の終わり -->
-    <div class="field" id="termField" hidden>
-      <label for="fTermEnd">いつまで（空なら期限なし）</label>
-      <input id="fTermEnd" type="date">
-    </div>
+    <section class="form-section">
+      <p class="form-section-title">詳細</p>
+      <div class="field"><label for="fMemo">メモ</label><textarea id="fMemo" placeholder="場所、持ち物、提出先など"></textarea></div>
+    </section>
 
-    <div class="field">
-      <label for="fMemo">メモ</label>
-      <textarea id="fMemo" placeholder="場所、持ち物、提出先など"></textarea>
-    </div>
-
-    <div class="acts">
-      <button class="btn-save" id="save">保存</button>
-      <button class="btn-cancel" id="cancel">やめる</button>
-      <span class="spacer"></span>
+    <div class="acts sheet-actions">
       <button class="btn-del" id="del" hidden>削除</button>
+      <span class="spacer"></span>
+      <button class="btn-cancel" id="cancel">キャンセル</button>
+      <button class="btn-save" id="save">保存</button>
     </div>
   </div>
 </dialog>
-
+<div class="toast" id="toast" hidden role="status" aria-live="polite"></div>
 <script>
 /* ==========================================================
-   じかんわり — 個人用のカレンダーとタスク管理
+   schedule — 個人用のカレンダーとタスク管理
 
    このファイル1つで動く。ビルド工程も外部ライブラリも無い。
    詳しい決まりごとは同じフォルダの AGENTS.md を見ること。
@@ -737,7 +958,7 @@ const CONFIG = {
   // Google Cloud で作った OAuth クライアントID。
   // 空のままならこの端末だけの保存（同期なし）で動く。
   // 入れ方は SETUP.md を見て。
-  googleClientId: '854298949365-sksqgetbn9cvgk17fpishble4e00tde1.apps.googleusercontent.com',
+  googleClientId: '',
 
   calendarId: 'primary',   // 'primary' = Googleの標準カレンダー（授業・予定）
 
@@ -753,12 +974,30 @@ const CONFIG = {
   // ただし緑だけは「今日・完了」で使っているので、近い色は避けたほうが読み取りやすい。
   // 4〜6個までにする。それ以上は色で見分けられなくなる
   categories: [
-    { id:'class',   name:'授業',     color:'#245BA8' },
-    { id:'baito',   name:'バイト',   color:'#7C6410' },
-    { id:'circle',  name:'サークル', color:'#6E45B0' },
-    { id:'private', name:'私用',     color:'#8A4A6B' },
+    { id:'class',   name:'授業',     color:'#1F5FA8' },
+    { id:'baito',   name:'バイト',   color:'#7A5A12' },
+    { id:'circle',  name:'サークル', color:'#68459F' },
+    { id:'private', name:'私用',     color:'#8A4463' },
   ],
 };
+
+/* 選べるテーマ。dark は「地が暗いか」。
+   種類の色から背景を作る向きがこれで決まる（明るい地なら白へ、暗い地なら黒へ寄せる） */
+const THEMES = [
+  { id:'paper', name:'紙（明るい）', dark:false },
+  { id:'night', name:'夜（暗い）',   dark:true  },
+];
+
+/* 画面に関する設定。保存先に保存され、端末をまたいで揃う */
+let prefs = { theme:'paper', dayStart:0, dayEnd:24, periods:null };
+
+const themeOf = () => THEMES.find(t => t.id === prefs.theme) || THEMES[0];
+
+function applyTheme(){
+  document.documentElement.dataset.theme = prefs.theme;
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if(meta) meta.setAttribute('content', themeOf().dark ? '#0D1117' : '#F6F7F9');
+}
 
 /* 未分類のときの色 */
 const NO_CAT = { id:'', name:'未分類', color:'#7A8791' };
@@ -775,9 +1014,17 @@ function mixHex(hex, target, ratio){
    項目側は id しか持たないので、名前や色を変えても登録済みの予定は書き換え不要 */
 let cats = CONFIG.categories.map(c => ({...c}));
 
-const catOf   = it => cats.find(c => c.id === it.cat) || NO_CAT;
-const catTint = c => mixHex(c.color, 255, 0.87);   // 薄い背景
-const catInk  = c => mixHex(c.color, 0, 0.30);     // 読みやすい濃さの文字
+const catOf = it => cats.find(c => c.id === it.cat) || NO_CAT;
+
+/* 種類の色から、背景色と文字色を作る。
+   暗い地なので、背景は黒に寄せて暗く、文字は白に寄せて明るくする。
+   明るい版を足すときは、この寄せる向きも一緒に変えること。
+   ここだけは色変数の差し替えでは解決しない */
+const calmly  = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
+/* 明るい地なら白へ寄せて薄く、暗い地なら黒へ寄せて暗くする。
+   固定にすると、暗いテーマで白っぽい帯が浮いて汚くなる */
+const catTint = c => themeOf().dark ? mixHex(c.color, 0, 0.72) : mixHex(c.color, 255, 0.90);
+const catInk  = c => themeOf().dark ? mixHex(c.color, 255, 0.55) : mixHex(c.color, 0, 0.32);
 
 /* 要素に流し込むCSS変数。未分類なら何も指定せず、既定の見た目に任せる */
 function catVars(it){
@@ -799,6 +1046,8 @@ function catVars(it){
    ========================================================== */
 const KEY = 'cal:items';
 const CATS_KEY = 'cal:cats';
+const TOKEN_KEY = 'cal:token';
+const PREFS_KEY = 'cal:prefs';
 const TZ  = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 // 素の保存場所。Claudeのアーティファクト内と、普通のブラウザの両方で動くようにする
@@ -828,7 +1077,13 @@ const LocalBackend = {
     const raw = await medium.get(CATS_KEY);
     return raw ? JSON.parse(raw) : null;
   },
-  async saveCats(list){ await medium.set(CATS_KEY, JSON.stringify(list)); }
+  async saveCats(list){ await medium.set(CATS_KEY, JSON.stringify(list)); },
+
+  async loadPrefs(){
+    const raw = await medium.get(PREFS_KEY);
+    return raw ? JSON.parse(raw) : null;
+  },
+  async savePrefs(p){ await medium.set(PREFS_KEY, JSON.stringify(p)); }
 };
 
 /* ---------- Googleカレンダーに保存 ---------- */
@@ -849,21 +1104,55 @@ const GoogleBackend = {
     });
   },
 
+  /* 取得したトークンは保存して使い回す。
+     毎回Googleへ取りに行くと、そのたび画面が出る。
+     トークンは1時間ほど有効なので、その間の再読み込みはやり取りが要らない。
+
+     ※ ブラウザの保存領域に置くので、端末を他人と共有している場合は
+        「接続を解除」で消せるようにしてある（設定から） */
+  async loadToken(){
+    try{
+      const raw = await medium.get(TOKEN_KEY);
+      if(!raw) return false;
+      const { token, exp } = JSON.parse(raw);
+      // 切れる2分前からは期限切れ扱いにする（操作の途中で切れるのを防ぐ）
+      if(!token || Date.now() > exp - 120000) return false;
+      this.token = token;
+      return true;
+    }catch(e){ return false; }
+  },
+
+  async saveToken(token, sec){
+    this.token = token;
+    try{
+      await medium.set(TOKEN_KEY, JSON.stringify({ token, exp: Date.now() + sec*1000 }));
+    }catch(e){ /* 保存できなくても、その回は動く */ }
+  },
+
+  async clearToken(){
+    this.token = null;
+    try{ await medium.set(TOKEN_KEY, ''); }catch(e){}
+  },
+
   async connect(interactive){
     if(!CONFIG.googleClientId){
       throw new Error('CONFIG.googleClientId が空。SETUP.md の手順でクライアントIDを入れて。');
     }
+    // 保存してあるトークンがまだ生きていれば、Googleに聞きに行かない
+    if(!interactive && await this.loadToken()) return;
+
     await this.loadGis();
-    this.token = await new Promise((res, rej) => {
+    const r = await new Promise((res, rej) => {
       const client = google.accounts.oauth2.initTokenClient({
         client_id: CONFIG.googleClientId,
         scope: CONFIG.scope,
-        callback: r => r.access_token ? res(r.access_token) : rej(new Error('許可されなかった')),
+        callback: x => x.access_token ? res(x) : rej(new Error('許可されなかった')),
         error_callback: e => rej(new Error('ログインに失敗した（' + (e.type || '不明') + '）'))
       });
       // prompt:'' … 一度許可していれば画面を出さずに通す
       client.requestAccessToken({ prompt: interactive ? 'consent' : '' });
     });
+    await this.saveToken(r.access_token, Number(r.expires_in) || 3600);
   },
 
   /* --- APIを叩く --- */
@@ -876,7 +1165,8 @@ const GoogleBackend = {
         ...(opts.headers || {})
       }
     });
-    if(r.status === 401){            // トークン切れ。取り直して1回だけやり直す
+    if(r.status === 401){            // トークン切れ。捨てて取り直し、1回だけやり直す
+      await this.clearToken();
       await this.connect(false);
       return this.api(path, opts);
     }
@@ -952,37 +1242,54 @@ const GoogleBackend = {
   },
 
   /* 種類の一覧は、目印を付けた1件の予定にJSONで入れておく。
+     目印 'scheduleSettings' は保存済みデータを探す鍵なので、あとから変えないこと。
      こうすると端末を変えても同じ設定が使える。
      日付ではなく目印で探すので、いつの予定に置いても見つかる */
   _catsEventId: null,
+  _settings: undefined,        // 1セッションに1回だけ取りに行く
 
-  async loadCats(){
+  async _loadSettings(){
+    if(this._settings !== undefined) return this._settings;
     const q = new URLSearchParams({
-      privateExtendedProperty: 'jikanwariSettings=1', maxResults: '1', showDeleted: 'false'
+      privateExtendedProperty: 'scheduleSettings=1', maxResults: '1', showDeleted: 'false'
     });
     const j  = await this.api(`${this.pathOf(CONFIG.calendarId)}?${q}`);
     const ev = (j.items || [])[0];
-    if(!ev) return null;
+    if(!ev){ this._settings = null; return null; }
     this._catsEventId = ev.id;
-    try{ return JSON.parse(ev.extendedProperties.private.cats); }
-    catch(e){ return null; }
+    const p = ev.extendedProperties?.private || {};
+    const parse = t => { try{ return JSON.parse(t); }catch(e){ return null; } };
+    this._settings = { cats: parse(p.cats), prefs: parse(p.prefs) };
+    return this._settings;
   },
 
-  async saveCats(list){
+  /* 種類と設定を1件の予定にまとめて入れる。
+     別々に書くと、片方の保存でもう片方が消えるため */
+  async _saveSettings(){
     const body = JSON.stringify({
-      summary: '（じかんわり の設定）',
-      description: 'このアプリが種類の一覧を保存している予定です。消すと種類の設定が初期状態に戻ります。',
+      summary: '（schedule の設定）',
+      description: 'このアプリが種類と表示設定を保存している予定です。消すと設定が初期状態に戻ります。',
       start: { date: '2020-01-01' },
       end:   { date: '2020-01-02' },
       transparency: 'transparent',
-      extendedProperties: { private: { jikanwariSettings: '1', cats: JSON.stringify(list) } }
+      extendedProperties: { private: {
+        scheduleSettings: '1',
+        cats:  JSON.stringify(cats),
+        prefs: JSON.stringify(prefs)
+      } }
     });
     const path = this.pathOf(CONFIG.calendarId);
     const ev = this._catsEventId
       ? await this.api(`${path}/${encodeURIComponent(this._catsEventId)}`, { method:'PATCH', body })
       : await this.api(path, { method:'POST', body });
     this._catsEventId = ev.id;
-  }
+    this._settings = { cats, prefs };
+  },
+
+  async loadCats(){  return (await this._loadSettings())?.cats  || null; },
+  async loadPrefs(){ return (await this._loadSettings())?.prefs || null; },
+  async saveCats(){  await this._saveSettings(); },
+  async savePrefs(){ await this._saveSettings(); }
 };
 
 /* ---------- 自前の形 ⇄ Googleの形 ---------- */
@@ -1039,7 +1346,7 @@ function toGoogle(it){
 function fromGoogle(ev){
   if(ev.status === 'cancelled') return null;
   const priv = ev.extendedProperties?.private || {};
-  if(priv.jikanwariSettings) return null;      // 設定用の予定は画面に出さない
+  if(priv.scheduleSettings) return null;       // 設定用の予定は画面に出さない
   const base = {
     id: ev.id, _remote: true,
     title: ev.summary || '(無題)',
@@ -1116,22 +1423,22 @@ function showWarn(msg){
 }
 
 function showBackend(){
+  drawSync();
   const el = document.getElementById('gstate');
-  if(el) el.textContent = '保存先：' + Backend.label;
-  const btn = document.getElementById('gsync');
-  if(btn) btn.textContent = Backend.name === 'google'
-    ? 'Googleカレンダーを切り離す' : 'Googleカレンダーとつなぐ';
+  if(el) el.textContent = Backend.name === 'google' ? 'Googleカレンダー' : 'この端末のみ';
 }
 
 /* ==========================================================
    3. 時間軸の設定 — 自分の生活に合わせて書き換えてね
    ========================================================== */
-const DAY_START = 7;    // 週ビューで何時から表示するか
-const DAY_END   = 24;   // 何時まで表示するか（24 = 深夜0時）
-const HOUR_PX   = 44;   // 1時間ぶんの高さ(px)。大きくすると余裕のある表示になる
+let DAY_START = 0;      // 何時から表示するか（0 = 深夜0時）。設定から変えられる
+let DAY_END   = 24;     // 何時まで表示するか（24 = 翌0時）。設定から変えられる
+// 0〜24にしておくと、範囲の外にはみ出す予定を端に寄せる処理が働かずに済む
+const HOUR_PX   = 44;   // 週ビューの1時間ぶんの高さ(px)
+const DAY_HOUR_PX = 26; // 今日ビューの1時間ぶんの高さ。1日ぶんが一画面に収まる詰め方
 
 // 「2限」を押したときに入る時刻。自分の大学の時間割に合わせて書き換えてね
-const PERIODS = [
+let PERIODS = [
   {n:1, s:'09:00', e:'10:30'},
   {n:2, s:'10:40', e:'12:10'},
   {n:3, s:'13:00', e:'14:30'},
@@ -1172,7 +1479,16 @@ const PERIODS = [
      class → recurrence の RRULE:FREQ=WEEKLY;BYDAY=... に変換
    ========================================================== */
 let items = [];
-let state = { screen:'calendar', view:'week', cursor:new Date() };
+/* 狭い画面では今日ビュー、広い画面では週ビューを既定にする。
+   端末の種類ではなく画面幅で決める（PCでも窓を狭くすれば今日ビューになる）。
+   最初の1回だけ。以後は利用者が選んだ表示を尊重する */
+const narrowScreen = () => window.matchMedia?.('(max-width: 767px)').matches === true;
+
+let state = { screen:'calendar', view: narrowScreen() ? 'day' : 'week', cursor:new Date() };
+let lastCalendarView = narrowScreen() ? 'month' : 'week';
+let navDirection = '';
+let recentId = '';
+let toastTimer = null;
 
 /* ---------- 日付ユーティリティ ---------- */
 const WD = ['日','月','火','水','木','金','土'];
@@ -1284,7 +1600,7 @@ function layoutBand(list, cols){
 
 /* ---------- 帯1本のHTML ---------- */
 function bar(p, colOffset){
-  const cls = ['bar', p.it.kind, p.cutL?'cutL':'', p.cutR?'cutR':'', p.it._unsaved?'unsaved':''].join(' ');
+  const cls = ['bar', p.it.kind, p.cutL?'cutL':'', p.cutR?'cutR':'', p.it._unsaved?'unsaved':'', p.it.id===recentId?'just-added':''].join(' ');
   const label = (p.it.start && !p.cutL) ? `${p.it.start} ${p.it.title}` : p.it.title;
   return `<button class="${cls}" data-id="${p.it.id}"
     style="${catVars(p.it)}grid-column:${p.i0 + 1 + colOffset} / span ${p.i1 - p.i0 + 1};grid-row:${p.lane + 1}"
@@ -1296,28 +1612,79 @@ function bar(p, colOffset){
    ========================================================== */
 function render(){
   const onCal = state.screen === 'calendar';
+  const onTask = state.screen === 'task';
+  const onSettings = state.screen === 'settings';
+  const isTodayView = onCal && state.view === 'day' && fmt(state.cursor) === today();
 
-  document.getElementById('tabCal').setAttribute('aria-pressed', onCal);
-  document.getElementById('tabTask').setAttribute('aria-pressed', !onCal);
-  document.getElementById('tabWeek').setAttribute('aria-pressed', state.view === 'week');
-  document.getElementById('tabMonth').setAttribute('aria-pressed', state.view === 'month');
+  const press = (id, on) => { const el = document.getElementById(id); if(el) el.setAttribute('aria-pressed', on); };
+  press('tabCal', onCal); press('tabTask', onTask); press('setOpen', onSettings);
+  press('sideCal', onCal && state.view !== 'day'); press('sideToday', isTodayView);
+  press('sideTask', onTask); press('sideSettings', onSettings);
+  press('mobileToday', isTodayView); press('mobileCal', onCal && !isTodayView);
+  press('mobileTask', onTask); press('mobileSettings', onSettings);
+  press('tabDay', state.view === 'day'); press('tabWeek', state.view === 'week'); press('tabMonth', state.view === 'month');
 
-  // カレンダー用の操作はタスク画面では隠す
-  document.getElementById('pager').hidden    = !onCal;
-  document.getElementById('viewtabs').hidden = !onCal;
-  document.getElementById('railBox').hidden  = !onCal;
+  const mobileTodayHome = narrowScreen() && isTodayView;
+  document.getElementById('pager').hidden = !onCal || mobileTodayHome;
+  document.getElementById('viewtabs').hidden = !onCal || mobileTodayHome;
+  document.getElementById('subrow').hidden = !onCal;
+  document.getElementById('add').hidden = onSettings;
+  document.getElementById('grid').hidden = onSettings;
+  document.getElementById('setDlg').hidden = !onSettings;
+  document.getElementById('pageTitle').textContent = onTask ? 'タスク' : onSettings ? '設定' : 'schedule';
+  document.getElementById('addLabel').textContent = onTask ? 'タスクを追加' : '予定を追加';
 
   const n = openTasks().length;
-  document.getElementById('tabTaskCount').textContent = n || '';
+  for(const id of ['tabTaskCount','sideTaskCount','mobileTaskCount']){
+    const el = document.getElementById(id); if(el) el.textContent = n || '';
+  }
 
   if(onCal){
-    state.view === 'week' ? renderWeek() : renderMonth();
-    renderRail();
-  }else{
+    lastCalendarView = state.view === 'day' ? lastCalendarView : state.view;
+    if(state.view === 'day') renderDay();
+    else if(state.view === 'week') renderWeek();
+    else renderMonth();
+  }else if(onTask){
     renderTasks();
+    document.getElementById('range').textContent = '';
+  }else{
+    prepareSettingsPage();
     document.getElementById('range').textContent = '';
   }
   document.getElementById('count').textContent = `登録数 ${items.length} 件`;
+  syncHeadHeight();
+
+  const key = state.screen + ':' + state.view;
+  if(key !== lastViewKey && !onSettings){
+    lastViewKey = key;
+    const g = document.getElementById('grid');
+    g.classList.remove('enter','enter-next','enter-prev');
+    void g.offsetWidth;
+    g.classList.add(navDirection === 'next' ? 'enter-next' : navDirection === 'prev' ? 'enter-prev' : 'enter');
+    navDirection = '';
+  }
+}
+let lastViewKey = '';
+
+/* 週ビューを開いたとき、いまの時刻あたりが見えるところまで動かす。
+   毎回いちばん上（朝7時）から始まると、夕方に開くたびスクロールが要る */
+/* 上部バーの実際の高さをCSSに渡す。
+   中身や画面幅で折り返すので固定値にできない。
+   右のタスク欄がこの値ぶん下がって貼り付く */
+function syncHeadHeight(){
+  const el = document.querySelector('.masthead');
+  if(el) document.documentElement.style.setProperty('--head-h', el.offsetHeight + 'px');
+}
+window.addEventListener('resize', syncHeadHeight);
+
+function scrollToNow(){
+  if(state.screen !== 'calendar' || state.view !== 'week') return;
+  const line = document.querySelector('#grid .nowline');
+  if(!line) return;                     // 今日が表示中の週に無ければ何もしない
+  const head = document.querySelector('.masthead')?.offsetHeight || 0;
+  const y = line.getBoundingClientRect().top + window.scrollY
+          - Math.max(head + 20, window.innerHeight / 3);
+  window.scrollTo({ top: Math.max(0, y), behavior: calmly() ? 'auto' : 'smooth' });
 }
 
 /* ==========================================================
@@ -1336,7 +1703,7 @@ function taskRow(it){
          aria-label="${picked ? '今日やるから外す' : '今日やるに入れる'}"
          title="${picked ? '今日やるから外す' : '今日やるに入れる'}">${picked ? '×' : '＋'}</button>`;
 
-  return `<div class="trow ${urgency(n)} ${it.done ? 'is-done' : ''} ${it._unsaved ? 'unsaved' : ''}">
+  return `<div class="trow ${urgency(n)} ${it.done ? 'is-done' : ''} ${it._unsaved ? 'unsaved' : ''} ${it.id===recentId ? 'just-added' : ''}">
     <button class="tcheck" data-toggle="${it.id}" aria-label="完了にする">✓</button>
     <span class="tbody" data-id="${it.id}" role="button" tabindex="0">
       <span class="ttitle">${catDot(it)}${esc(it.title)}</span>
@@ -1349,57 +1716,98 @@ function taskRow(it){
 }
 
 function renderTasks(){
-  const all  = tasks();
+  const all = tasks();
   const open = openTasks();
-  const done = all.filter(it => it.done)
-                  .sort((a,b) => b.date.localeCompare(a.date));
-
-  if(!all.length){
-    document.getElementById('grid').innerHTML =
-      `<div class="tasks"><p class="tempty">まだタスクが無いよ。<br>
-       右下の「＋ 追加」から「タスク」を選んで登録してみて。</p></div>`;
-    return;
-  }
-
-  // 「今日やる」に選んだものは、そちらにだけ出す（同じタスクを2箇所に出さない）
+  const done = all.filter(it => it.done).sort((a,b) => b.date.localeCompare(a.date));
   const picked = open.filter(isPicked);
-  const rest   = open.filter(it => !isPicked(it));
-
-  // 緊急度は色ではなく「どのまとまりに入っているか」で伝える
-  const bucket = it => {
-    const n = diffDays(it.date, today());
-    return n < 0 ? 0 : n <= 1 ? 1 : n <= 7 ? 2 : 3;
-  };
+  const rest = open.filter(it => !isPicked(it));
+  const bucket = it => { const n = diffDays(it.date, today()); return n < 0 ? 0 : n <= 1 ? 1 : n <= 7 ? 2 : 3; };
   const GROUPS = ['期限切れ', '今日・明日', '今週', 'それ以降'];
 
-  let h = '<div class="tasks">';
+  let focus = `<div class="tasks-panel"><section class="tgroup today"><h3>今日やる<span class="tcount">${picked.length}</span></h3>`;
+  focus += picked.length ? picked.map(taskRow).join('')
+    : '<p class="tempty">今日やるタスクはまだありません。<br>右側の「＋」から今日取り組むものを選べます。</p>';
+  focus += '</section></div>';
 
-  h += `<section class="tgroup today"><h3>今日やる${picked.length ? ` (${picked.length})` : ''}</h3>`;
-  h += picked.length
-    ? picked.map(taskRow).join('')
-    : '<p class="tempty">まだ選んでないよ。<br>下のリストの「＋」で、今日やるものを選ぼう。</p>';
-  h += '</section>';
-
-  GROUPS.forEach((name, i) => {
-    const list = rest.filter(it => bucket(it) === i);
-    if(!list.length) return;                       // 空のまとまりは出さない
-    h += `<section class="tgroup ${i === 0 ? 'overdue' : ''}">
-            <h3>${name}<span class="tcount">${list.length}</span></h3>
-            ${list.map(taskRow).join('')}
-          </section>`;
-  });
-  if(!rest.length){
-    h += '<section class="tgroup"><p class="tempty">ほかに残っているタスクは無いよ。</p></section>';
+  let restHtml = '<div class="tasks-panel"><div class="tasks-panel-title"><b>すべてのタスク</b><span>' + rest.length + '件</span></div>';
+  if(!all.length){
+    restHtml += '<p class="tempty">まだタスクがありません。上の「＋ タスクを追加」から登録できます。</p>';
+  }else{
+    GROUPS.forEach((name, i) => {
+      const list = rest.filter(it => bucket(it) === i);
+      if(!list.length) return;
+      restHtml += `<section class="tgroup ${i === 0 ? 'overdue' : ''}"><h3>${name}<span class="tcount">${list.length}</span></h3>${list.map(taskRow).join('')}</section>`;
+    });
+    if(!rest.length) restHtml += '<section class="tgroup"><p class="tempty">ほかに残っているタスクはありません。</p></section>';
+    if(done.length){
+      restHtml += `<section class="tgroup"><button class="tdone-head" id="toggleDone">${showDone ? '▾' : '▸'} 完了済み <span class="tcount">${done.length}</span></button>${showDone ? done.map(taskRow).join('') : ''}</section>`;
+    }
   }
+  restHtml += '</div>';
+  document.getElementById('grid').innerHTML = `<div class="tasks-layout"><aside class="task-focus">${focus}</aside><main class="task-rest">${restHtml}</main></div>`;
+}
 
-  if(done.length){
-    h += `<section class="tgroup">
-      <button class="tdone-head" id="toggleDone">
-        ${showDone ? '▾' : '▸'} 完了済み (${done.length})
-      </button>
-      ${showDone ? done.map(taskRow).join('') : ''}
+/* 今日ビュー。狭い画面の既定。
+   時間軸の表ではなく、上から順に読むだけのリストにする。
+   「次いつ、どこ」を確かめるのが主な用途。1日の形を眺めたいときは週ビューに切り替える */
+function renderDay(){
+  const ds = fmt(state.cursor);
+  const d  = state.cursor;
+  document.getElementById('range').textContent =
+    `${d.getMonth()+1}月${d.getDate()}日 (${WD[d.getDay()]})`;
+
+  const timed  = gridItems(ds).sort((a,b) => a.start.localeCompare(b.start));
+  const allday = barItems([ds,ds,ds,ds,ds,ds,ds]);
+  const nowMin = new Date().getHours()*60 + new Date().getMinutes();
+  const isToday = ds === today();
+
+  const next = isToday ? timed.find(it => toMin(it.end || it.start) > nowMin) : timed[0];
+  const rest = timed.filter(it => it !== next);
+
+  let h = '<div class="dayview">';
+
+  if(next){
+    const left = isToday ? toMin(next.start) - nowMin : null;
+    h += `<section class="dnext" data-id="${next.id}" role="button" tabindex="0">
+      <p class="lab">つぎ</p>
+      <p class="tm">${esc(next.start)}${next.end ? `<i>–</i>${esc(next.end)}` : ''}</p>
+      <p class="ti">${catDot(next)}${esc(next.title)}</p>
+      ${next.memo ? `<p class="me">${esc(next.memo.split('\n')[0])}</p>` : ''}
+      ${left > 0 ? `<p class="left">あと ${left >= 60 ? Math.floor(left/60) + '時間' : ''}${left % 60}分</p>` : ''}
     </section>`;
+  }else{
+    h += `<section class="dnext none"><p class="lab">つぎ</p>
+      <p class="me">${isToday ? 'この日の予定はもうないよ。' : '時刻つきの予定はないよ。'}</p></section>`;
   }
+
+  const list = (title, rows) => {
+    if(!rows.length) return '';
+    return `<h3 class="dsec">${title}</h3><ul class="dlist">${rows.join('')}</ul>`;
+  };
+
+  h += list('終日', allday.map(it =>
+    `<li class="drow" data-id="${it.id}" role="button" tabindex="0">
+       <span class="dt">—</span>
+       <span class="dn">${catDot(it)}${esc(it.title)}</span></li>`));
+
+  h += list('このあと', rest.map(it =>
+    `<li class="drow" data-id="${it.id}" role="button" tabindex="0">
+       <span class="dt">${esc(it.start)}</span>
+       <span class="dn">${catDot(it)}${esc(it.title)}</span></li>`));
+
+  const picked = pickedToday();
+  h += '<h3 class="dsec">今日やる</h3>';
+  if(picked.length){
+    h += '<ul class="dlist">' + picked.map(it =>
+      `<li class="drow task">
+         <button class="tcheck" data-toggle="${it.id}" aria-label="完了にする">✓</button>
+         <span class="dn" data-id="${it.id}" role="button" tabindex="0">${catDot(it)}${esc(it.title)}</span>
+         <span class="dd ${urgency(diffDays(it.date, today()))}">${dueLabel(diffDays(it.date, today()), false)}</span>
+       </li>`).join('') + '</ul>';
+  }else{
+    h += '<p class="dempty">まだ選んでないよ。<br>タスク画面の「＋」で今日やるものを選べる。</p>';
+  }
+
   h += '</div>';
   document.getElementById('grid').innerHTML = h;
 }
@@ -1410,7 +1818,7 @@ function renderWeek(){
   const cols = days.map(fmt);
   const sun = days[6];
   document.getElementById('range').textContent =
-    `${mon.getFullYear()}.${pad(mon.getMonth()+1)}.${pad(mon.getDate())} — ${pad(sun.getMonth()+1)}.${pad(sun.getDate())}`;
+    `${mon.getMonth()+1}月${mon.getDate()}日 — ${sun.getMonth()+1}月${sun.getDate()}日`;
 
   let h = '<div class="week">';
 
@@ -1503,22 +1911,22 @@ function layoutDay(list){
 
 /* 時間軸に置く予定1件のHTML。
    表示範囲(DAY_START〜DAY_END)からはみ出す分は端に寄せて、必ず見える・押せる状態にする */
-function evHtml(ev){
+function evHtml(ev, scale = HOUR_PX){
   const LO = DAY_START*60, HI = DAY_END*60;
   const s = clamp(ev.s, LO, HI - 15);
   const e = clamp(ev.e, s + 15, HI);
-  const top = minTop(s);
-  const hgt = (e - s) / 60 * HOUR_PX - 2;
+  const top = (s - LO) / 60 * scale;
+  const hgt = (e - s) / 60 * scale - 2;
   const w   = 100 / ev.cols;
   const time = ev.it.end ? `${ev.it.start}–${ev.it.end}` : ev.it.start;
-  return `<button class="ev ${ev.it.kind}${hgt < 32 ? ' short' : ''}${ev.it._unsaved ? ' unsaved' : ''}" data-id="${ev.it.id}"
+  return `<button class="ev ${ev.it.kind}${hgt < 32 ? ' short' : ''}${ev.it._unsaved ? ' unsaved' : ''}${ev.it.id===recentId ? ' just-added' : ''}" data-id="${ev.it.id}"
     style="${catVars(ev.it)}top:${top}px;height:${hgt}px;left:calc(${ev.col*w}% + 1px);width:calc(${w}% - 3px)"
-    ><span class="t">${esc(ev.it.title)}</span><span class="s">${esc(time)}</span></button>`;
+    ><span class="t">${esc(ev.it.title)}</span><span class="s">${esc(time)}</span>${hgt >= 56 && ev.it.memo ? `<span class="m">${esc(ev.it.memo.split('\n')[0])}</span>` : ''}</button>`;
 }
 
 function chip(it){
   const sub = it.start ? esc(it.start) : '';
-  return `<button class="chip ${it.kind}${it._unsaved ? ' unsaved' : ''}" data-id="${it.id}" style="${catVars(it)}">
+  return `<button class="chip ${it.kind}${it._unsaved ? ' unsaved' : ''}${it.id===recentId ? ' just-added' : ''}" data-id="${it.id}" style="${catVars(it)}">
     <span class="t">${esc(it.title)}</span>
     ${sub ? `<span class="s">${sub}</span>` : ''}
   </button>`;
@@ -1527,7 +1935,8 @@ function chip(it){
 function renderMonth(){
   const c = state.cursor;
   const first = new Date(c.getFullYear(), c.getMonth(), 1);
-  document.getElementById('range').textContent = `${first.getFullYear()}年 ${first.getMonth()+1}月`;
+  document.getElementById('range').textContent =
+    `${first.getFullYear()}年 ${first.getMonth()+1}月`;
   const start = monday(first);
 
   let h = '<div class="month"><div class="mheads">';
@@ -1565,40 +1974,7 @@ function renderMonth(){
   document.getElementById('grid').innerHTML = h;
 }
 
-/* 右レーンは一覧そのものではなく「タスク画面への窓」。
-   カレンダーを汚さずに、残件の存在だけを視界に入れるのが狙い */
-function renderRail(){
-  const open = openTasks();
-  const el = document.getElementById('rail');
-  document.getElementById('railCount').textContent = open.length || '';
-
-  if(!open.length){
-    el.innerHTML = '<p class="empty">残っているタスクは無いよ。</p>';
-    return;
-  }
-
-  // 今日やるを選んでいれば「いま何をやるか」を、選んでいなければ期限順を見せる
-  const picked = pickedToday();
-  const list   = picked.length ? picked : open.slice(0, 3);
-  const rest   = picked.length ? open.length - picked.length : open.length - list.length;
-
-  el.innerHTML =
-    (picked.length ? '<p class="rail-label">今日やる</p>' : '') +
-    list.map(it => {
-      const n = diffDays(it.date, today());
-      return `<div class="rail-item ${urgency(n)}">
-        ${picked.length ? `<button class="tcheck" data-toggle="${it.id}" aria-label="完了にする">✓</button>` : ''}
-        <span class="dn">${dueLabel(n, false)}</span>
-        <span class="body" data-id="${it.id}" role="button" tabindex="0">
-          <span class="ttl">${catDot(it)}${esc(it.title)}</span>
-          <span class="dt">${dateText(it)}</span>
-        </span>
-      </div>`;
-    }).join('')
-    + (rest > 0 ? `<p class="rail-more">ほか ${rest} 件</p>` : '');
-}
-
-/* クリックの受け口は #grid と #rail に1つずつだけ置く。
+/* クリックの受け口は #grid に1つだけ置く。
    描画のたびに要素へ貼り直していたのをやめた（再描画が重くなる原因だった） */
 function initClicks(){
   document.getElementById('grid').addEventListener('click', e => {
@@ -1620,14 +1996,11 @@ function initClicks(){
 
     // 帯のガイド・月のセル → その日で新規作成
     const cell = e.target.closest('.guide, .mcell');
-    if(cell) openSheet(null, cell.dataset.date);
-  });
-
-  document.getElementById('rail').addEventListener('click', e => {
-    const chk = e.target.closest('[data-toggle]');
-    if(chk){ toggleDone(chk.dataset.toggle); return; }
-    const hit = e.target.closest('[data-id]');
-    if(hit) openSheet(items.find(i => i.id === hit.dataset.id));
+    if(cell){
+      if(narrowScreen() && cell.classList.contains('mcell')){
+        state.cursor = parse(cell.dataset.date); state.view = 'day'; state.screen = 'calendar'; render();
+      }else openSheet(null, cell.dataset.date);
+    }
   });
 
   // タスク画面：チェックで完了、＋で今日やる、本文で編集
@@ -1641,24 +2014,66 @@ function initClicks(){
     if(body) openSheet(items.find(i => i.id === body.dataset.id));
   });
 
-  document.getElementById('railGo').addEventListener('click', () => {
-    state.screen = 'task'; render();
+  document.getElementById('tabCal').addEventListener('click', openCalendar);
+  document.getElementById('tabTask').addEventListener('click', openTasksScreen);
+
+  const grid = document.getElementById('grid');
+  grid.addEventListener('pointermove', e => {
+    if(e.pointerType && e.pointerType !== 'mouse') return;
+    const col = e.target.closest('.dcol');
+    grid.querySelectorAll('.dcol.hovering').forEach(x => { if(x !== col) x.classList.remove('hovering'); });
+    if(!col) return;
+    const y = clamp(e.clientY - col.getBoundingClientRect().top, 0, (DAY_END-DAY_START)*HOUR_PX - 1);
+    const raw = DAY_START*60 + Math.round(y / HOUR_PX * 2) * 30;
+    const mins = clamp(raw, DAY_START*60, DAY_END*60 - 30);
+    col.style.setProperty('--hover-y', minTop(mins) + 'px');
+    col.dataset.hoverTime = `${pad(Math.floor(mins/60))}:${pad(mins%60)}`;
+    col.classList.add('hovering');
   });
-  document.getElementById('tabCal').addEventListener('click', () => {
-    state.screen = 'calendar'; render();
+  grid.addEventListener('pointerleave', () => grid.querySelectorAll('.dcol.hovering').forEach(x => x.classList.remove('hovering')));
+  grid.addEventListener('keydown', e => {
+    if((e.key === 'Enter' || e.key === ' ') && e.target.matches('[role="button"]')){ e.preventDefault(); e.target.click(); }
   });
-  document.getElementById('tabTask').addEventListener('click', () => {
-    state.screen = 'task'; render();
-  });
+}
+
+function openCalendar(){
+  state.screen = 'calendar';
+  state.view = narrowScreen() ? 'month' : (lastCalendarView === 'day' ? 'week' : lastCalendarView);
+  render();
+}
+function openToday(){
+  state.screen = 'calendar'; state.view = 'day'; state.cursor = new Date(); render(); window.scrollTo({top:0,behavior:'auto'});
+}
+function openTasksScreen(){ state.screen = 'task'; render(); window.scrollTo({top:0,behavior:'auto'}); }
+function openSettings(){ state.screen = 'settings'; render(); window.scrollTo({top:0,behavior:'auto'}); }
+function tapFeedback(ms=10){ try{ if(narrowScreen() && navigator.vibrate) navigator.vibrate(ms); }catch(e){} }
+function showToast(msg){
+  const el = document.getElementById('toast'); if(!el) return;
+  clearTimeout(toastTimer); el.textContent = msg; el.hidden = false; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
+  toastTimer = setTimeout(() => { el.hidden = true; el.classList.remove('show'); }, 1900);
 }
 
 function toggleDone(id){
   const it = items.find(i => i.id === id);
   if(!it) return;
-  it.done = !it.done;
-  if(it.done) it.today = '';        // 終わったら今日やるからも外す
-  render();
-  persist(it);
+
+  const apply = () => {
+    it.done = !it.done;
+    if(it.done) it.today = '';       // 終わったら今日やるからも外す
+    render();
+    persist(it);
+  };
+
+  // 完了にするときだけ、チェックが入るのを見せてから消す。
+  // すぐ消えると「押せたのか」「何が消えたのか」が分からない
+  const row = document.querySelector(`[data-toggle="${it.id}"]`)?.closest('.trow, .drow');
+  if(row && !it.done && !calmly()){
+    row.classList.add('checking');
+    tapFeedback(12);
+    setTimeout(apply, 260);
+  }else{
+    apply();
+  }
 }
 
 function togglePick(id){
@@ -1707,6 +2122,7 @@ function persist(it){
 const dlg = document.getElementById('dlg');
 let editing = null;
 let kind = 'event';
+let formDirty = false;
 
 /* 日付・時刻の枠は、どこを押してもピッカーが開くようにする。
    標準のままだと、PCのブラウザでは端の小さいアイコンを狙わないと開かない。
@@ -1766,6 +2182,162 @@ catBox.addEventListener('click', e => {
 buildCatPicks();
 
 /* ==========================================================
+   設定
+   ----------------------------------------------------------
+   画面下に散らばっていた操作をここへ集約。
+   テーマ・表示する時間帯・時限は保存先に保存され、端末をまたいで揃う
+   ========================================================== */
+const setDlg = document.getElementById('setDlg');
+
+/* 設定の値を実際の表示へ反映する */
+function applyPrefs(){
+  applyTheme();
+  DAY_START = Number(prefs.dayStart) || 0;
+  DAY_END   = Number(prefs.dayEnd)   || 24;
+  if(Array.isArray(prefs.periods) && prefs.periods.length) PERIODS = prefs.periods;
+  buildPeriodPicks();
+}
+
+async function savePrefs(){
+  applyPrefs();
+  render();
+  try{ await Backend.savePrefs(prefs); showWarn(null); }
+  catch(err){ showWarn('<strong>設定を保存できなかった。</strong><br>' + CANT_SAVE); }
+}
+
+/* --- 同期の状態 --- */
+function drawSync(){
+  const onGoogle = Backend.name === 'google';
+  document.getElementById('syncState').textContent =
+    onGoogle ? 'Googleカレンダー（端末間で同期）' : 'この端末のみ（同期しない）';
+  document.getElementById('syncWhen').textContent =
+    onGoogle && lastSync ? '最終同期 ' + lastSync : '';
+  document.getElementById('gsync').textContent =
+    onGoogle ? '接続を解除' : 'Googleカレンダーとつなぐ';
+  document.getElementById('gresync').hidden = !onGoogle;
+  const dot = document.getElementById('syncDot'); if(dot) dot.classList.toggle('on', onGoogle);
+}
+let lastSync = '';
+
+/* --- テーマ・時間帯の選択肢 --- */
+document.getElementById('fTheme').innerHTML =
+  THEMES.map(t => `<option value="${t.id}">${esc(t.name)}</option>`).join('');
+const hourOpts = (from, to) => {
+  let h = '';
+  for(let i = from; i <= to; i++) h += `<option value="${i}">${i === 24 ? '24:00' : pad(i)}:00</option>`;
+  return h;
+};
+document.getElementById('fDayStart').innerHTML = hourOpts(0, 12);
+document.getElementById('fDayEnd').innerHTML   = hourOpts(12, 24);
+
+/* --- 時限の編集 --- */
+let validPeriodSnapshot = PERIODS.map(p => ({...p}));
+function buildPeriodEdit(){
+  document.getElementById('periodEdit').innerHTML = PERIODS.map((p, i) => `
+    <div class="prow">
+      <span class="pn">${p.n}限</span>
+      <input type="time" value="${esc(p.s)}" data-p="${i}" data-f="s" aria-label="${p.n}限の開始">
+      <span class="tilde">〜</span>
+      <input type="time" value="${esc(p.e)}" data-p="${i}" data-f="e" aria-label="${p.n}限の終了">
+      <button class="cat-del" data-pdel="${i}" aria-label="この時限を消す">×</button>
+    </div>`).join('');
+}
+
+document.getElementById('periodEdit').addEventListener('input', e => {
+  const el = e.target;
+  if(el.dataset.p === undefined) return;
+  PERIODS[Number(el.dataset.p)][el.dataset.f] = el.value;
+  prefs.periods = PERIODS;
+});
+function validPeriods(){
+  return PERIODS.every(p => p.s && p.e && toMin(p.s) < toMin(p.e));
+}
+async function savePeriodPrefs(){
+  if(!validPeriods()){
+    PERIODS = validPeriodSnapshot.map(p => ({...p}));
+    prefs.periods = PERIODS.map(p => ({...p}));
+    showToast('終了時刻は開始時刻より後にしてください');
+    buildPeriodEdit();
+    return false;
+  }
+  validPeriodSnapshot = PERIODS.map(p => ({...p}));
+  prefs.periods = PERIODS.map(p => ({...p}));
+  await savePrefs();
+  return true;
+}
+document.getElementById('periodEdit').addEventListener('change', savePeriodPrefs);
+document.getElementById('periodEdit').addEventListener('click', e => {
+  const b = e.target.closest('[data-pdel]');
+  if(!b) return;
+  PERIODS.splice(Number(b.dataset.pdel), 1);
+  PERIODS.forEach((p, i) => p.n = i + 1);
+  prefs.periods = PERIODS;
+  buildPeriodEdit(); savePeriodPrefs();
+});
+document.getElementById('periodAdd').addEventListener('click', () => {
+  const last = PERIODS[PERIODS.length - 1];
+  const start = last ? last.e : '09:00';
+  const startMin = toMin(start);
+  const endMin = Math.min(startMin + 90, 23 * 60 + 59);
+  const end = `${pad(Math.floor(endMin / 60))}:${pad(endMin % 60)}`;
+  PERIODS.push({ n: PERIODS.length + 1, s: start, e: end });
+  prefs.periods = PERIODS;
+  buildPeriodEdit(); savePeriodPrefs();
+});
+
+/* --- 設定ページを開く --- */
+function prepareSettingsPage(){
+  document.getElementById('fTheme').value = prefs.theme;
+  document.getElementById('fDayStart').value = prefs.dayStart;
+  document.getElementById('fDayEnd').value = prefs.dayEnd;
+  document.getElementById('catSummary').textContent = cats.map(c => c.name).join('・') || '（未設定）';
+  validPeriodSnapshot = PERIODS.map(p => ({...p}));
+  buildPeriodEdit(); drawSync();
+  document.querySelectorAll('[data-theme-choice]').forEach(b => b.setAttribute('aria-pressed', b.dataset.themeChoice === prefs.theme));
+}
+document.getElementById('setOpen').addEventListener('click', openSettings);
+document.getElementById('setSave').addEventListener('click', openCalendar);
+document.getElementById('themeChoices').addEventListener('click', e => {
+  const b = e.target.closest('[data-theme-choice]'); if(!b) return;
+  document.getElementById('fTheme').value = b.dataset.themeChoice;
+  document.getElementById('fTheme').dispatchEvent(new Event('change'));
+});
+
+document.getElementById('fTheme').addEventListener('change', e => {
+  prefs.theme = e.target.value;
+  applyTheme();
+  buildCatPicks();
+  document.querySelectorAll('[data-theme-choice]').forEach(b => b.setAttribute('aria-pressed', b.dataset.themeChoice === prefs.theme));
+  savePrefs();
+});
+document.getElementById('fDayStart').addEventListener('change', e => {
+  prefs.dayStart = Number(e.target.value);
+  if(prefs.dayEnd <= prefs.dayStart){
+    prefs.dayEnd = Math.min(24, prefs.dayStart + 1);
+    document.getElementById('fDayEnd').value = prefs.dayEnd;
+  }
+  savePrefs();
+});
+document.getElementById('fDayEnd').addEventListener('change', e => {
+  prefs.dayEnd = Number(e.target.value);
+  if(prefs.dayEnd <= prefs.dayStart){
+    prefs.dayStart = Math.max(0, prefs.dayEnd - 1);
+    document.getElementById('fDayStart').value = prefs.dayStart;
+  }
+  savePrefs();
+});
+
+document.getElementById('gresync').addEventListener('click', async () => {
+  try{
+    await useBackend(GoogleBackend);
+    lastSync = new Date().toTimeString().slice(0,5);
+    drawSync();
+  }catch(err){
+    showWarn('<strong>読み込めなかった。</strong> ' + esc(err.message));
+  }
+});
+
+/* ==========================================================
    種類の編集
    ----------------------------------------------------------
    idは中で作って外に出さない。名前や色を変えても、
@@ -1780,6 +2352,10 @@ function drawCatEdit(){
       <input type="color" value="${esc(c.color)}" data-i="${i}" data-f="color" aria-label="色">
       <input type="text"  value="${esc(c.name)}"  data-i="${i}" data-f="name"
              maxlength="12" placeholder="名前">
+      <span class="cat-moves">
+        <button class="cat-move" data-up="${i}" aria-label="この種類を上へ移動" ${i === 0 ? 'disabled' : ''}>↑</button>
+        <button class="cat-move" data-down="${i}" aria-label="この種類を下へ移動" ${i === draftCats.length - 1 ? 'disabled' : ''}>↓</button>
+      </span>
       <button class="cat-del" data-del="${i}" aria-label="この種類を消す">×</button>
     </div>`).join('');
 
@@ -1808,9 +2384,23 @@ document.getElementById('catEdit').addEventListener('input', e => {
 });
 
 document.getElementById('catEdit').addEventListener('click', e => {
-  const b = e.target.closest('[data-del]');
-  if(!b) return;
-  draftCats.splice(Number(b.dataset.del), 1);
+  const up = e.target.closest('[data-up]');
+  const down = e.target.closest('[data-down]');
+  const del = e.target.closest('[data-del]');
+  if(up){
+    const i = Number(up.dataset.up);
+    if(i > 0) [draftCats[i - 1], draftCats[i]] = [draftCats[i], draftCats[i - 1]];
+    drawCatEdit();
+    return;
+  }
+  if(down){
+    const i = Number(down.dataset.down);
+    if(i < draftCats.length - 1) [draftCats[i], draftCats[i + 1]] = [draftCats[i + 1], draftCats[i]];
+    drawCatEdit();
+    return;
+  }
+  if(!del) return;
+  draftCats.splice(Number(del.dataset.del), 1);
   drawCatEdit();
 });
 
@@ -1822,6 +2412,7 @@ document.getElementById('catAdd').addEventListener('click', () => {
 });
 
 document.getElementById('catCancel').addEventListener('click', () => catDlg.close());
+document.getElementById('catClose').addEventListener('click', () => catDlg.close());
 
 document.getElementById('catSave').addEventListener('click', async () => {
   cats = draftCats
@@ -1836,8 +2427,11 @@ document.getElementById('catSave').addEventListener('click', async () => {
 
 // 「時限」ボタンを並べる。押すと開始・終了時刻が埋まる（ただの入力補助）
 const picks = document.getElementById('periodPicks');
-picks.innerHTML = PERIODS.map(p =>
-  `<button type="button" data-p="${p.n}" title="${p.s}〜${p.e}">${p.n}限</button>`).join('');
+function buildPeriodPicks(){
+  picks.innerHTML = PERIODS.map(p =>
+    `<button type="button" data-p="${p.n}" title="${p.s}〜${p.e}">${p.n}限</button>`).join('');
+}
+buildPeriodPicks();
 picks.addEventListener('click', e => {
   const b = e.target.closest('button'); if(!b) return;
   const p = PERIODS.find(x => x.n === Number(b.dataset.p)); if(!p) return;
@@ -1877,7 +2471,8 @@ document.querySelectorAll('#kinds button').forEach(b =>
 
 function openSheet(item, presetDate, presetStart, presetEnd){
   editing = item || null;
-  document.getElementById('dlgTitle').textContent = item ? '編集' : '追加';
+  formDirty = false;
+  document.getElementById('dlgTitle').textContent = item ? ((item.kind==='task'?'タスク':'予定') + 'を編集') : (state.screen === 'task' ? 'タスクを追加' : '予定を追加');
   document.getElementById('del').hidden = !item;
 
   setKind(item ? item.kind : (state.screen === 'task' ? 'task' : 'event'));
@@ -1896,6 +2491,16 @@ function openSheet(item, presetDate, presetStart, presetEnd){
   dlg.showModal();
   document.getElementById('fTitle').focus();
 }
+dlg.addEventListener('input', () => { formDirty = true; });
+dlg.addEventListener('change', () => { formDirty = true; });
+function closeEditor(){
+  if(formDirty && !confirm('入力中の変更を破棄しますか？')) return;
+  formDirty = false; dlg.close();
+}
+dlg.addEventListener('cancel', e => {
+  if(formDirty && !confirm('入力中の変更を破棄しますか？')) e.preventDefault();
+  else formDirty = false;
+});
 
 document.getElementById('save').addEventListener('click', async () => {
   const title = document.getElementById('fTitle').value.trim();
@@ -1948,14 +2553,18 @@ document.getElementById('save').addEventListener('click', async () => {
 
   // 画面を先に更新して、書き込みは裏で走らせる。
   // 待ってから閉じていたので、保存のたびに固まって見えていた
-  dlg.close();
+  recentId = target.id;
+  formDirty = false; dlg.close();
+  tapFeedback(10); showToast(editing ? '変更を保存しました' : (kind === 'task' ? 'タスクを追加しました' : '予定を追加しました'));
   render();
+  setTimeout(() => { recentId = ''; }, 1100);
   persist(target);
 });
 
 document.getElementById('del').addEventListener('click', () => {
-  if(!editing) return;
+  if(!editing || !confirm('この項目を削除しますか？')) return;
   const gone = editing;
+  formDirty = false;
   items = items.filter(i => i.id !== gone.id);
   dlg.close();
   render();
@@ -1972,22 +2581,38 @@ document.getElementById('del').addEventListener('click', () => {
     .finally(endWrite);
 });
 
-document.getElementById('cancel').addEventListener('click', () => dlg.close());
+document.getElementById('cancel').addEventListener('click', closeEditor);
+document.getElementById('dlgClose').addEventListener('click', closeEditor);
 
 /* ==========================================================
    7. ナビゲーション
    ========================================================== */
 document.getElementById('add').addEventListener('click', () => openSheet(null, today()));
-document.getElementById('now').addEventListener('click', () => { state.cursor = new Date(); render(); });
+for(const id of ['sideCal','mobileCal']) document.getElementById(id).addEventListener('click', openCalendar);
+for(const id of ['sideToday','mobileToday']) document.getElementById(id).addEventListener('click', openToday);
+for(const id of ['sideTask','mobileTask']) document.getElementById(id).addEventListener('click', openTasksScreen);
+for(const id of ['sideSettings','mobileSettings']) document.getElementById(id).addEventListener('click', openSettings);
+document.getElementById('now').addEventListener('click', () => {
+  state.cursor = new Date();
+  state.screen = 'calendar';
+  render();
+  scrollToNow();
+});
 document.getElementById('prev').addEventListener('click', () => shift(-1));
 document.getElementById('next').addEventListener('click', () => shift(1));
 function shift(n){
-  state.cursor = state.view === 'week'
-    ? addDays(state.cursor, 7*n)
-    : new Date(state.cursor.getFullYear(), state.cursor.getMonth()+n, 1);
+  navDirection = n < 0 ? 'prev' : 'next';
+  state.cursor = state.view === 'day'  ? addDays(state.cursor, n)
+               : state.view === 'week' ? addDays(state.cursor, 7*n)
+               : new Date(state.cursor.getFullYear(), state.cursor.getMonth()+n, 1);
   render();
 }
-document.getElementById('tabWeek').addEventListener('click', () => { state.view='week'; render(); });
+document.getElementById('tabDay').addEventListener('click', () => {
+  state.view = 'day'; render(); window.scrollTo({ top:0, behavior:'auto' });
+});
+document.getElementById('tabWeek').addEventListener('click', () => {
+  state.view = 'week'; render(); scrollToNow();
+});
 document.getElementById('tabMonth').addEventListener('click', () => { state.view='month'; render(); });
 
 /* ==========================================================
@@ -2007,6 +2632,7 @@ document.getElementById('export').addEventListener('click', () => {
 });
 
 document.getElementById('import').addEventListener('click', () => {
+  if(!confirm('データを読み込みますか？ 現在の予定や設定が変更される可能性があります。必要なら先に書き出してください。')) return;
   const inp = document.createElement('input');
   inp.type = 'file'; inp.accept = 'application/json';
   inp.addEventListener('change', async () => {
@@ -2075,6 +2701,10 @@ async function useBackend(be){
     cats = (Array.isArray(saved) && saved.length) ? saved : CONFIG.categories.map(c => ({...c}));
     buildCatPicks();
 
+    const sp = await Backend.loadPrefs().catch(() => null);
+    if(sp) prefs = { ...prefs, ...sp };
+    applyPrefs();
+
     const { out, changed } = migrate(await Backend.list());
     items = out;
     if(changed && Backend.name === 'local') await Backend.flush();
@@ -2086,6 +2716,7 @@ async function useBackend(be){
 
 document.getElementById('gsync').addEventListener('click', async () => {
   if(Backend.name === 'google'){
+    await GoogleBackend.clearToken();          // 保存してある認証も消す
     await medium.set('cal:backend', 'local');
     await useBackend(LocalBackend);
     showWarn('ローカル保存に戻した。Googleカレンダー側の予定はそのまま残ってる。');
@@ -2096,6 +2727,8 @@ document.getElementById('gsync').addEventListener('click', async () => {
     await GoogleBackend.connect(true);
     await medium.set('cal:backend', 'google');
     await useBackend(GoogleBackend);
+    lastSync = new Date().toTimeString().slice(0,5);
+    drawSync();
     showWarn(null);
   }catch(err){
     showWarn('<strong>つなげなかった。</strong> ' + esc(err.message));
@@ -2114,6 +2747,9 @@ document.getElementById('gsync').addEventListener('click', async () => {
     try{
       await GoogleBackend.connect(false);
       await useBackend(GoogleBackend);
+      lastSync = new Date().toTimeString().slice(0,5);
+      drawSync();
+      scrollToNow();
       return;
     }catch(err){
       showWarn('<strong>Googleカレンダーにつながらなかった。</strong> ' +
@@ -2122,6 +2758,7 @@ document.getElementById('gsync').addEventListener('click', async () => {
   }
 
   await useBackend(LocalBackend);
+  scrollToNow();
 
   // ローカルで初回のときだけサンプルを入れておく（消してOK）
   // ※ここに自分の本当の授業名・教室・バイト先を書かないこと。
@@ -2146,6 +2783,7 @@ document.getElementById('gsync').addEventListener('click', async () => {
     ];
     await Backend.flush();
     render();
+    scrollToNow();
   }
 })();
 </script>

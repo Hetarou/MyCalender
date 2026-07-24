@@ -54,7 +54,6 @@ function load(file){
         return text(e) + ' [' + (cat ? cat[1] : '未分類') + ']';
       });
       snap['帯'] = [...d.querySelectorAll('#grid .bar')].map(text);
-      snap['右レーン'] = [...d.querySelectorAll('#rail .rail-item')].map(text);
 
       d.getElementById('tabTask').click();
       snap['タスクの見出し'] = [...d.querySelectorAll('#grid .tgroup h3')].map(text);
