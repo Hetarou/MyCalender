@@ -36,7 +36,8 @@ code += `
   layoutBand, layoutDay, toGoogle, fromGoogle, itemsOn, barItems, gridItems,
   endOf, isMulti, fmt, parse, addDays, diffDays, toMin, migrate,
   tasks, openTasks, isPicked, pickedToday, today,
-  catOf, dueLabel, CONFIG, NO_CAT,
+  catOf, dueLabel, CONFIG, NO_CAT, catTint, catInk,
+  narrowScreen, DAY_HOUR_PX, gridItems,
   setCats: list => { cats = list; },
   setItems: list => { items = list; },
   DAY_START, DAY_END, HOUR_PX, PERIODS
@@ -58,7 +59,12 @@ const stubEl = () => new Proxy({}, {
 });
 
 const store = new Map();
+let CALM = false;                       // 動きを控える設定
 const sandbox = {
+  matchMedia: q => ({ matches: CALM && q.includes('reduced-motion'),
+                      addEventListener(){}, addListener(){} }),
+  addEventListener: () => {},
+  removeEventListener: () => {},
   console,
   document: {
     getElementById: stubEl,
@@ -120,6 +126,200 @@ test('画面：JSが参照しているIDがHTMLに全部ある', () => {
   const missing = used.filter(u => !have.has(u));
   eq(missing, [], 'HTMLに無いIDを参照している');
   ok(used.length > 20, '照合できた数が少なすぎる（正規表現が壊れている可能性）');
+});
+
+/* ==========================================================
+   0-2. 明るい版／暗い版
+   ========================================================== */
+function rgbOf(str){
+  const m = /rgb\((\d+),(\d+),(\d+)\)/.exec(str);
+  ok(m, `色の形式が違う: ${str}`);
+  return [+m[1], +m[2], +m[3]];
+}
+function contrast(a, b){
+  const lum = c => { const f = v => { v /= 255; return v <= 0.03928 ? v/12.92 : ((v+0.055)/1.055)**2.4; };
+                     return 0.2126*f(c[0]) + 0.7152*f(c[1]) + 0.0722*f(c[2]); };
+  const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p);
+  return (x + 0.05) / (y + 0.05);
+}
+
+test('テーマ：色がすべて変数になっている（直書きが残っていない）', () => {
+  const style = html.slice(html.indexOf('<style>'), html.indexOf('</style>'));
+  const after = style.slice(style.indexOf('*{box-sizing'));   // :root の定義より後ろ
+  const raw = [...new Set([...after.matchAll(/#[0-9A-Fa-f]{3,6}\b/g)].map(x => x[0]))];
+  eq(raw, [], '変数の外に色が直書きされている（片方の版だけ壊れる）');
+});
+
+test('テーマ：一本で、OSの設定に振り回されない', () => {
+  const style = html.slice(html.indexOf('<style>'), html.indexOf('</style>'))
+                    .replace(/\/\*[\s\S]*?\*\//g, '');     // コメントは除く
+  ok(!/prefers-color-scheme/.test(style),
+     'OSの明暗設定で切り替わる指定が残っている（明るい版を足すときはこのテストも直す）');
+  const root = style.slice(style.indexOf(':root{'), style.indexOf('}', style.indexOf(':root{')));
+  for(const v of ['--paper','--card','--ink','--rule','--accent','--done','--on-fill']){
+    ok(root.includes(v + ':'), `${v} が定義されていない`);
+  }
+});
+
+test('テーマ：種類の色が、地の上で読める濃さになる', () => {
+  for(const c of T.CONFIG.categories){
+    const d = contrast(rgbOf(T.catTint(c)), rgbOf(T.catInk(c)));
+    ok(d >= 4.5, `${c.name} が読みにくい（コントラスト比 ${d.toFixed(1)}）`);
+  }
+});
+
+test('テーマ：種類の背景が地から浮きすぎない', () => {
+  // 明るい地なので、種類の背景もごく薄くする。
+  // 濃く塗ると予定が並んだときに画面が騒がしくなる
+  for(const c of T.CONFIG.categories){
+    const [r, g, b] = rgbOf(T.catTint(c));
+    ok(r + g + b > 600, `${c.name} の背景が濃すぎる（明るい地に合わない）`);
+  }
+});
+
+test('表示：0時から24時まで出る', () => {
+  eq(T.DAY_START, 0, '開始時刻');
+  eq(T.DAY_END, 24, '終了時刻');
+});
+
+test('見やすさ：小さすぎる文字を使っていない', () => {
+  const style = html.slice(html.indexOf('<style>'), html.indexOf('</style>'))
+                    .replace(/\/\*[\s\S]*?\*\//g, '');
+  const small = [...new Set([...style.matchAll(/font-size:\s*([\d.]+)px/g)]
+    .map(x => parseFloat(x[1])).filter(v => v < 12))];
+  eq(small.sort(), [], '12px未満の文字がある。読みやすさを優先する方針に反する');
+});
+
+test('見やすさ：本文と地の明暗差が十分ある', () => {
+  const style = html.slice(html.indexOf('<style>'), html.indexOf('</style>'));
+  const root = style.slice(style.indexOf(':root{'), style.indexOf('}', style.indexOf(':root{')));
+  const get = v => /#([0-9A-Fa-f]{6})/.exec(root.slice(root.indexOf(v + ':')))[1];
+  const rgb = h => [0,2,4].map(i => parseInt(h.slice(i,i+2),16));
+  const lum = c => { const f = v => { v/=255; return v<=0.03928 ? v/12.92 : ((v+0.055)/1.055)**2.4; };
+                     return 0.2126*f(c[0]) + 0.7152*f(c[1]) + 0.0722*f(c[2]); };
+  const [x, y] = [lum(rgb(get('--ink'))), lum(rgb(get('--paper')))].sort((a,b) => b-a);
+  const ratio = (x + 0.05) / (y + 0.05);
+  ok(ratio >= 12, `本文と地のコントラスト比が低い（${ratio.toFixed(1)}）`);
+});
+
+test('デザイン：角に丸みを持たせる（硬い印象を避ける）', () => {
+  const style = html.slice(html.indexOf('<style>'), html.indexOf('</style>'));
+  const root = style.slice(style.indexOf(':root{'), style.indexOf('}', style.indexOf(':root{')));
+  const r = parseFloat(/--radius:\s*([\d.]+)px/.exec(root)[1]);
+  ok(r >= 10, `カードの丸みが小さい（${r}px）。柔らかい印象にする方針に反する`);
+  ok(/--radius-pill:/.test(root), '丸ボタン用の指定が無い');
+});
+
+test('デザイン：タスクはカレンダー側に出さない', () => {
+  const body = html.slice(0, html.indexOf('<script>'));
+  ok(!/id="rail/.test(body), 'カレンダー画面にタスク欄が残っている');
+  const js = m[1];
+  ok(!js.includes('renderRail'), 'タスク欄の描画処理が残っている');
+  // 今日ビューの中の「今日やる」は残す（ここで管理するため）
+  const fn = js.slice(js.indexOf('function renderDay'), js.indexOf('function renderWeek'));
+  ok(fn.includes('pickedToday'), '今日ビューから「今日やる」が消えている');
+});
+
+test('見やすさ：日/週/月は上段の右端に置く', () => {
+  const body = html.slice(0, html.indexOf('<script>'));
+  const rows = [...body.matchAll(/<div class="mrow[^"]*"[^>]*>([\s\S]*?)<\/header>|<div class="mrow[^"]*"[^>]*>([\s\S]*?)(?=<div class="mrow)/g)];
+  const first = body.slice(body.indexOf('<div class="mrow'), body.indexOf('<div class="mrow sub'));
+  ok(first.includes('id="viewtabs"'), '日/週/月が上段に無い');
+  ok(first.indexOf('id="viewtabs"') > first.indexOf('class="spacer"'),
+     '日/週/月が右端に寄っていない');
+  const style = html.slice(html.indexOf('<style>'), html.indexOf('</style>'));
+  ok(/\.viewtabs\{[^}]*margin-left:auto/.test(style), '右端に固定する指定が無い');
+});
+
+test('見やすさ：今日ビューは表ではなくリストで組む', () => {
+  const js = m[1];
+  const fn = js.slice(js.indexOf('function renderDay'), js.indexOf('function renderWeek'));
+  ok(fn.includes('dlist') && fn.includes('drow'), 'リストで組んでいない');
+  ok(!fn.includes('DAY_HOUR_PX'), '時間軸の表が残っている（読むものを増やす）');
+});
+
+test('認証：トークンを保存して使い回す（毎回聞きに行かない）', () => {
+  const js = m[1];
+  ok(/TOKEN_KEY/.test(js), 'トークンの保存先が無い');
+  ok(/loadToken|saveToken/.test(js), 'トークンを保存する処理が無い');
+  const fn = js.slice(js.indexOf('async connect(interactive)'));
+  ok(/if\(!interactive && await this\.loadToken\(\)\) return;/.test(fn.slice(0, 600)),
+     '保存済みトークンがあってもGoogleへ聞きに行ってしまう');
+});
+
+test('認証：期限切れの手前で取り直す', () => {
+  const js = m[1];
+  const fn = js.slice(js.indexOf('async loadToken'), js.indexOf('async saveToken'));
+  ok(/exp\s*-\s*\d+/.test(fn), '切れる直前を期限切れ扱いにしていない（操作中に切れる）');
+});
+
+test('認証：解除したら保存してある認証も消す', () => {
+  const js = m[1];
+  ok(/clearToken\(\)/.test(js), '認証を消す処理が無い');
+});
+
+/* ==========================================================
+   0-3. 手触り
+   ========================================================== */
+test('手触り：動きを控える設定に対応している', () => {
+  const style = html.slice(html.indexOf('<style>'), html.indexOf('</style>'));
+  ok(/prefers-reduced-motion/.test(style), '動きを止める指定が無い');
+  ok(/calmly\s*\(\s*\)/.test(m[1]), 'JS側で動きを控える判定をしていない');
+});
+
+test('手触り：押せる部品に当たり判定の拡張がある', () => {
+  const style = html.slice(html.indexOf('<style>'), html.indexOf('</style>'));
+  for(const cls of ['tcheck', 'tpick']){
+    ok(new RegExp(`\\.${cls}[^{]*::after`).test(style) ||
+       new RegExp(`::after[^}]*}`).test(style) && style.includes(`.${cls}::after`),
+       `.${cls} の当たり判定が広がっていない`);
+  }
+});
+
+test('手触り：現在時刻へのスクロールが週ビューだけで働く', () => {
+  const js = m[1];
+  const fn = js.slice(js.indexOf('function scrollToNow'));
+  ok(/state\.view\s*!==\s*'week'/.test(fn.slice(0, 400)), '週ビュー以外でも動いてしまう');
+  ok(/nowline/.test(fn.slice(0, 500)), '今日が無い週で何もしない判定が無い');
+});
+
+/* ==========================================================
+   0-4. PCとスマホのすみわけ
+   ========================================================== */
+test('すみわけ：狭い画面では今日ビュー、広い画面では週ビューが既定', () => {
+  const js = m[1];
+  ok(/narrowScreen\s*\(\s*\)\s*\?\s*'day'\s*:\s*'week'/.test(js),
+     '画面幅で初期表示を選んでいない');
+  ok(/max-width/.test(js), '画面幅ではなく端末の種類で判定している可能性');
+});
+
+test('すみわけ：3つの表示がすべて存在する', () => {
+  const js = m[1];
+  for(const f of ['renderDay', 'renderWeek', 'renderMonth']){
+    ok(js.includes('function ' + f), `${f} が無い`);
+  }
+  const body = html.slice(0, html.indexOf('<script>'));
+  for(const id of ['tabDay', 'tabWeek', 'tabMonth']){
+    ok(body.includes(`id="${id}"`), `${id} のボタンが無い`);
+  }
+});
+
+test('すみわけ：今日ビューは1画面で読み切れる量に絞る', () => {
+  const js = m[1];
+  const fn = js.slice(js.indexOf('function renderDay'), js.indexOf('function renderWeek'));
+  // 次の予定・終日・このあと・今日やる の4つだけ
+  const secs = [...fn.matchAll(/dsec">([^<]+)</g)].map(x => x[1]);
+  ok(secs.length <= 3, `見出しが多すぎる（${secs.join(' / ')}）`);
+  ok(fn.includes('つぎ'), '「つぎ」が無い');
+});
+
+test('すみわけ：今日ビューと週ビューが同じ振り分けを使う', () => {
+  T.setItems([
+    {id:'c1', kind:'class', title:'授業', weekday:1, start:'09:00', end:'10:30', termEnd:null},
+    {id:'t1', kind:'task',  title:'タスク', date:'2026-07-20', endDate:'2026-07-20', done:false},
+  ]);
+  const ids = T.gridItems('2026-07-20').map(x => x.id);
+  eq(ids, ['c1'], '今日ビューにタスクが出る／授業が出ない');
 });
 
 /* ==========================================================
@@ -361,12 +561,15 @@ function colorDist(a, b){
 }
 const MIN_DIST = 115;   // これを下回ると見分けがつきにくい
 
-test('カテゴリ：完了の緑と混同しない', () => {
-  // 緊急度を色で表すのをやめたので、赤は種類に使ってよい。
-  // 緑だけは「今日・完了」で使い続けているので離す
+test('カテゴリ：役割が決まっている色と混同しない', () => {
+  // 赤（--accent）は「いま・今日・選択中」、緑（--done）は「完了」に予約してある。
+  // 種類の色をここに近づけると、何を表す色か判別できなくなる
+  const reserved = { '「いま」の赤': '#C4303A', '「完了」の緑': '#3EBFA0' };
   for(const c of T.CONFIG.categories){
-    const d = colorDist(c.color, '#0E8F7E');
-    ok(d >= MIN_DIST, `${c.name}(${c.color}) が完了の緑に近すぎる（距離 ${d}）`);
+    for(const [name, hex] of Object.entries(reserved)){
+      const d = colorDist(c.color, hex);
+      ok(d >= MIN_DIST, `${c.name}(${c.color}) が ${name} に近すぎる（距離 ${d}）`);
+    }
   }
 });
 
