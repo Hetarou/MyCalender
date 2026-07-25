@@ -9,3 +9,9 @@
 - PWAキャッシュをv1.1.0へ更新
 
 GitHub Pagesの同じフォルダへ、index.html / manifest.json / sw.js / icon-192.png / icon-512.png を上書きしてPushしてください。
+
+
+Phase 1 revision v1.1.1:
+- 種類編集を「一覧 → 1種類の編集」の2段階UIに変更
+- 定番色（赤/オレンジ/黄/緑/水色/青/紫/ピンク/白/黒/茶）をプリセット化
+- その他の色はOS標準カラーピッカーから選択

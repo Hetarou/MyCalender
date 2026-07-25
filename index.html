@@ -869,25 +869,43 @@ dialog::backdrop{background:rgba(20,33,43,.42)}
 .ev{box-sizing:border-box}
 .ev:hover{z-index:30!important}
 
-/* 種類編集：大きいプリセットから選び、必要なときだけ自由色を使う。 */
-.cat-editor-row{align-items:flex-start;padding:13px 0;gap:10px}
-.cat-editor-main{flex:1;min-width:0}
-.cat-name-line{display:flex;align-items:center;gap:9px}
-.cat-preview{width:16px;height:16px;border-radius:50%;flex:0 0 auto;border:1px solid color-mix(in srgb,var(--ink) 14%,transparent)}
-.cat-name-line input[type="text"]{flex:1;min-width:0}
-.cat-palette{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:9px}
+/* 種類編集：一覧 → 1種類の編集、の2段階。 */
+.cat-list{display:flex;flex-direction:column;margin-top:4px}
+.cat-list-row{
+  display:flex;align-items:center;gap:11px;width:100%;min-height:54px;padding:9px 4px;
+  border-bottom:1px solid var(--rule-soft);text-align:left;
+}
+.cat-list-row:hover{background:var(--card-hov)}
+.cat-preview{width:18px;height:18px;border-radius:50%;flex:0 0 auto;border:1px solid color-mix(in srgb,var(--ink) 18%,transparent)}
+.cat-list-name{flex:1;min-width:0;font-size:14.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cat-list-chevron{flex:0 0 auto;color:var(--ink-faint);font-size:20px;padding:0 5px}
+.cat-list-controls{display:flex;align-items:center;gap:3px;flex:0 0 auto}
+.cat-detail{padding:2px 0 6px}
+.cat-detail-section{margin-top:17px}
+.cat-detail-label{display:block;font-size:12.5px;font-weight:600;color:var(--ink-soft);margin-bottom:8px}
+.cat-detail-name{width:100%;min-height:44px;padding:9px 10px;border:1px solid var(--rule);border-radius:10px;background:var(--card);color:var(--ink);font:inherit;font-size:15px}
+.cat-palette{display:grid;grid-template-columns:repeat(6,38px);gap:9px;align-items:center}
 .cat-swatch{
-  width:34px;height:34px;border-radius:10px;border:2px solid transparent;
-  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ink) 10%,transparent);
+  width:38px;height:38px;border-radius:50%;border:2px solid transparent;
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ink) 18%,transparent);
   position:relative;
 }
-.cat-swatch[aria-pressed="true"]{border-color:var(--ink)}
+.cat-swatch:hover{transform:scale(1.05)}
+.cat-swatch[aria-pressed="true"]{border-color:var(--ink);box-shadow:0 0 0 2px var(--card),0 0 0 4px var(--ink)}
 .cat-swatch[aria-pressed="true"]::after{
   content:'✓';position:absolute;inset:0;display:grid;place-items:center;
-  color:white;font-weight:800;text-shadow:0 1px 3px rgba(0,0,0,.55);
+  color:white;font-weight:800;text-shadow:0 1px 3px rgba(0,0,0,.7);
 }
-.cat-custom{position:relative;display:flex;align-items:center;justify-content:center;min-height:34px;padding:0 10px;border:1px solid var(--rule);border-radius:9px;font-size:12px;color:var(--ink-soft);cursor:pointer;overflow:hidden}
+.cat-swatch.light[aria-pressed="true"]::after{color:#111827;text-shadow:none}
+.cat-custom{
+  position:relative;display:inline-flex;align-items:center;justify-content:center;
+  min-height:40px;margin-top:12px;padding:8px 14px;border:1px solid var(--rule);
+  border-radius:9px;font-size:13px;color:var(--ink-soft);cursor:pointer;overflow:hidden;background:var(--card)
+}
+.cat-custom:hover{border-color:var(--ink-soft);color:var(--ink)}
 .cat-custom input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.cat-back{display:none;width:38px;height:38px;border-radius:9px;background:var(--paper);font-size:22px;line-height:1}
+.cat-back:not([hidden]){display:grid;place-items:center}
 @media (max-width:767px){
   .task-tabs{width:100%;display:grid;grid-template-columns:repeat(3,1fr)}
   .task-tabs button{padding-left:7px;padding-right:7px}
@@ -895,7 +913,7 @@ dialog::backdrop{background:rgba(20,33,43,.42)}
   .ivy-now{padding:15px 14px}.ivy-actions{padding-left:0}
   .ivy-title{font-size:16px}.ivy-item{align-items:flex-start}.ivy-order{padding-top:1px}
   .today-action{margin-left:0;align-self:center;max-width:120px;white-space:normal;line-height:1.3}
-  .cat-editor-row{flex-wrap:wrap}.cat-editor-main{flex-basis:100%}.cat-moves{margin-left:auto}
+  .cat-palette{grid-template-columns:repeat(5,38px)}.cat-list-controls{gap:1px}
 }
 
 </style>
@@ -1064,8 +1082,12 @@ dialog::backdrop{background:rgba(20,33,43,.42)}
 
 <dialog id="catDlg">
   <div class="sheet compact-sheet">
-    <div class="sheet-head"><div><h3>種類を編集</h3></div><button class="sheet-close" id="catClose" aria-label="閉じる">×</button></div>
-    <p class="hint">まずプリセットから選び、必要なときだけ「その他」で自由な色を選べます。並び順も入力画面に反映されます。</p>
+    <div class="sheet-head">
+      <button class="cat-back" id="catBack" aria-label="種類一覧に戻る" hidden>‹</button>
+      <div><h3 id="catDlgTitle">種類を編集</h3></div>
+      <button class="sheet-close" id="catClose" aria-label="閉じる">×</button>
+    </div>
+    <p class="hint" id="catHint">変更したい種類を選んでください。並び順もここで変更できます。</p>
     <div id="catEdit"></div>
     <button class="cat-add" id="catAdd">＋ 種類を追加</button>
     <p class="hint" id="catNote"></p>
@@ -2695,32 +2717,75 @@ document.getElementById('gresync').addEventListener('click', async () => {
    ========================================================== */
 const catDlg = document.getElementById('catDlg');
 let draftCats = [];
+let editingCatIndex = null;
+
+// できるだけ「色名を見てすぐ分かる」定番色に寄せる。
+// 赤 / オレンジ / 黄 / 緑 / 水色 / 青 / 紫 / ピンク / 白 / 黒 / 茶
 const CAT_PRESETS = [
-  '#1F5FA8','#3857B8','#68459F','#8A4463','#B4535A',
-  '#C65D21','#A16207','#7A5A12','#526A78','#4B668A'
+  { color:'#EF4444', name:'赤' },
+  { color:'#F97316', name:'オレンジ' },
+  { color:'#EAB308', name:'黄' },
+  { color:'#22C55E', name:'緑' },
+  { color:'#06B6D4', name:'水色' },
+  { color:'#3B82F6', name:'青' },
+  { color:'#8B5CF6', name:'紫' },
+  { color:'#EC4899', name:'ピンク' },
+  { color:'#F8FAFC', name:'白', light:true },
+  { color:'#111827', name:'黒' },
+  { color:'#92400E', name:'茶' }
 ];
 
 function drawCatEdit(){
-  document.getElementById('catEdit').innerHTML = draftCats.map((c, i) => `
-    <div class="cat-row cat-editor-row">
-      <div class="cat-editor-main">
-        <div class="cat-name-line">
-          <span class="cat-preview" style="background:${esc(c.color)}" aria-hidden="true"></span>
-          <input type="text" value="${esc(c.name)}" data-i="${i}" data-f="name" maxlength="12" placeholder="名前">
-        </div>
-        <div class="cat-palette" role="group" aria-label="${esc(c.name || '種類')}の色">
-          ${CAT_PRESETS.map(color => `<button type="button" class="cat-swatch" style="background:${color}" data-color="${color}" data-i="${i}" aria-label="${color}" aria-pressed="${c.color.toLowerCase()===color.toLowerCase()}"></button>`).join('')}
-          <label class="cat-custom">その他
-            <input type="color" value="${esc(c.color)}" data-i="${i}" data-f="color" aria-label="その他の色を選ぶ">
+  const title = document.getElementById('catDlgTitle');
+  const hint = document.getElementById('catHint');
+  const back = document.getElementById('catBack');
+  const add = document.getElementById('catAdd');
+  const cancel = document.getElementById('catCancel');
+
+  if(editingCatIndex !== null && draftCats[editingCatIndex]){
+    const c = draftCats[editingCatIndex];
+    title.textContent = c.name || '新しい種類';
+    hint.textContent = '色と名前を編集します。定番色にない色は「その他の色…」から選べます。';
+    back.hidden = false;
+    add.hidden = true;
+    cancel.textContent = '戻る';
+
+    document.getElementById('catEdit').innerHTML = `
+      <div class="cat-detail">
+        <section class="cat-detail-section">
+          <span class="cat-detail-label">色</span>
+          <div class="cat-palette" role="group" aria-label="${esc(c.name || '種類')}の色">
+            ${CAT_PRESETS.map(p => `<button type="button" class="cat-swatch${p.light ? ' light' : ''}" style="background:${p.color}" data-color="${p.color}" aria-label="${p.name}" title="${p.name}" aria-pressed="${c.color.toLowerCase()===p.color.toLowerCase()}"></button>`).join('')}
+          </div>
+          <label class="cat-custom">その他の色…
+            <input type="color" value="${esc(c.color)}" data-f="color" aria-label="その他の色を選ぶ">
           </label>
-        </div>
-      </div>
-      <span class="cat-moves">
-        <button class="cat-move" data-up="${i}" aria-label="この種類を上へ移動" ${i === 0 ? 'disabled' : ''}>↑</button>
-        <button class="cat-move" data-down="${i}" aria-label="この種類を下へ移動" ${i === draftCats.length - 1 ? 'disabled' : ''}>↓</button>
-      </span>
-      <button class="cat-del" data-del="${i}" aria-label="この種類を消す">×</button>
-    </div>`).join('');
+        </section>
+        <section class="cat-detail-section">
+          <label class="cat-detail-label" for="catDetailName">名前</label>
+          <input id="catDetailName" class="cat-detail-name" type="text" value="${esc(c.name)}" data-f="name" maxlength="12" placeholder="名前">
+        </section>
+      </div>`;
+  }else{
+    editingCatIndex = null;
+    title.textContent = '種類を編集';
+    hint.textContent = '変更したい種類を選んでください。並び順もここで変更できます。';
+    back.hidden = true;
+    add.hidden = false;
+    cancel.textContent = 'やめる';
+
+    document.getElementById('catEdit').innerHTML = `<div class="cat-list">${draftCats.map((c, i) => `
+      <div class="cat-list-row" data-edit-cat="${i}" role="button" tabindex="0" aria-label="${esc(c.name || '新しい種類')}を編集">
+        <span class="cat-preview" style="background:${esc(c.color)}" aria-hidden="true"></span>
+        <span class="cat-list-name">${esc(c.name || '新しい種類')}</span>
+        <span class="cat-list-controls">
+          <button class="cat-move" data-up="${i}" aria-label="この種類を上へ移動" ${i === 0 ? 'disabled' : ''}>↑</button>
+          <button class="cat-move" data-down="${i}" aria-label="この種類を下へ移動" ${i === draftCats.length - 1 ? 'disabled' : ''}>↓</button>
+          <button class="cat-del" data-del="${i}" aria-label="この種類を消す">×</button>
+        </span>
+        <span class="cat-list-chevron" aria-hidden="true">›</span>
+      </div>`).join('')}</div>`;
+  }
 
   const lost = draftCats.length < cats.length
     ? items.filter(it => it.cat && !draftCats.some(c => c.id === it.cat)).length
@@ -2732,6 +2797,7 @@ function drawCatEdit(){
 
 function openCatEditor(){
   draftCats = cats.map(c => ({...c}));
+  editingCatIndex = null;
   drawCatEdit();
   catDlg.showModal();
 }
@@ -2739,52 +2805,87 @@ function openCatEditor(){
 document.getElementById('catOpen').addEventListener('click', openCatEditor);
 document.getElementById('catOpen2').addEventListener('click', openCatEditor);
 
+document.getElementById('catBack').addEventListener('click', () => {
+  editingCatIndex = null;
+  drawCatEdit();
+});
+
 document.getElementById('catEdit').addEventListener('input', e => {
+  if(editingCatIndex === null) return;
   const el = e.target;
-  if(el.dataset.i === undefined) return;
-  draftCats[Number(el.dataset.i)][el.dataset.f] = el.value;
+  if(!el.dataset.f) return;
+  draftCats[editingCatIndex][el.dataset.f] = el.value;
+  if(el.dataset.f === 'name') document.getElementById('catDlgTitle').textContent = el.value.trim() || '新しい種類';
 });
 
 document.getElementById('catEdit').addEventListener('change', e => {
+  if(editingCatIndex === null) return;
   const el = e.target;
-  if(el.matches('input[type="color"][data-i]')) drawCatEdit();
+  if(el.matches('input[type="color"][data-f="color"]')){
+    draftCats[editingCatIndex].color = el.value;
+    drawCatEdit();
+  }
+});
+
+document.getElementById('catEdit').addEventListener('keydown', e => {
+  const row = e.target.closest('[data-edit-cat]');
+  if(row && (e.key === 'Enter' || e.key === ' ')){
+    e.preventDefault();
+    editingCatIndex = Number(row.dataset.editCat);
+    drawCatEdit();
+  }
 });
 
 document.getElementById('catEdit').addEventListener('click', e => {
   const swatch = e.target.closest('[data-color]');
-  if(swatch){
-    draftCats[Number(swatch.dataset.i)].color = swatch.dataset.color;
+  if(swatch && editingCatIndex !== null){
+    draftCats[editingCatIndex].color = swatch.dataset.color;
     drawCatEdit();
     return;
   }
+
   const up = e.target.closest('[data-up]');
   const down = e.target.closest('[data-down]');
   const del = e.target.closest('[data-del]');
   if(up){
+    e.stopPropagation();
     const i = Number(up.dataset.up);
     if(i > 0) [draftCats[i - 1], draftCats[i]] = [draftCats[i], draftCats[i - 1]];
     drawCatEdit();
     return;
   }
   if(down){
+    e.stopPropagation();
     const i = Number(down.dataset.down);
     if(i < draftCats.length - 1) [draftCats[i], draftCats[i + 1]] = [draftCats[i + 1], draftCats[i]];
     drawCatEdit();
     return;
   }
-  if(!del) return;
-  draftCats.splice(Number(del.dataset.del), 1);
-  drawCatEdit();
+  if(del){
+    e.stopPropagation();
+    draftCats.splice(Number(del.dataset.del), 1);
+    drawCatEdit();
+    return;
+  }
+
+  const row = e.target.closest('[data-edit-cat]');
+  if(row){
+    editingCatIndex = Number(row.dataset.editCat);
+    drawCatEdit();
+  }
 });
 
 document.getElementById('catAdd').addEventListener('click', () => {
-  draftCats.push({ id: 'c' + uid(), name: '', color: '#5B6B78' });
+  draftCats.push({ id: 'c' + uid(), name: '', color: '#3B82F6' });
+  editingCatIndex = draftCats.length - 1;
   drawCatEdit();
-  const last = document.querySelectorAll('#catEdit input[type="text"]');
-  last[last.length - 1]?.focus();
+  document.getElementById('catDetailName')?.focus();
 });
 
-document.getElementById('catCancel').addEventListener('click', () => catDlg.close());
+document.getElementById('catCancel').addEventListener('click', () => {
+  if(editingCatIndex !== null){ editingCatIndex = null; drawCatEdit(); return; }
+  catDlg.close();
+});
 document.getElementById('catClose').addEventListener('click', () => catDlg.close());
 
 document.getElementById('catSave').addEventListener('click', async () => {
@@ -3172,7 +3273,7 @@ document.getElementById('gsync').addEventListener('click', async () => {
    Google Calendar / OAuthの通信処理とは独立して動作する。
    ========================================================== */
 (() => {
-  const APP_VERSION = "1.1.0";
+  const APP_VERSION = "1.1.1";
   const INSTALL_DISMISSED_KEY = "schedule:pwa-install-dismissed";
   let deferredInstallPrompt = null;
   let swRegistration = null;
