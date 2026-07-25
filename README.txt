@@ -1,22 +1,11 @@
-# 配置方法
+# schedule PWA v1.1.0 — Phase 1
 
-次のファイルをGitHub Pagesで公開している同じフォルダへ置いてください。
+今回の変更:
+- タスク画面を「今日 / すべて / 完了」の3タブに整理
+- 「今日」をアイビーメソッド型にし、NOWと優先順位を表示
+- 今日のタスクの順位を↑↓で変更可能
+- カレンダーの重複予定で既存カードの横幅が急に1/2・1/3にならない表示へ変更
+- 種類の色をプリセットから選べるUIに変更（その他の色も選択可）
+- PWAキャッシュをv1.1.0へ更新
 
-- index.html
-- manifest.json
-- sw.js
-- icon-192.png
-- icon-512.png
-
-既存のindex.htmlとmanifest.jsonは、今回のファイルで置き換えます。
-
-## 初回確認
-
-1. GitHubへCommit / Push
-2. 公開ページを開く
-3. F12 → Application → Service Workers
-4. activated and is running を確認
-5. Application → Manifestでアイコンを確認
-
-古いService Workerが残る場合:
-Application → Storage → Clear site data の後、再読み込みしてください。
+GitHub Pagesの同じフォルダへ、index.html / manifest.json / sw.js / icon-192.png / icon-512.png を上書きしてPushしてください。

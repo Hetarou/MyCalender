@@ -805,6 +805,99 @@ dialog::backdrop{background:rgba(20,33,43,.42)}
   }
 }
 
+
+/* ==========================================================
+   Phase 1 — task focus / stable calendar cards / color presets
+   ========================================================== */
+.task-tabs{
+  display:flex;gap:4px;margin:2px 0 16px;padding:4px;
+  width:max-content;max-width:100%;border:1px solid var(--rule-soft);
+  border-radius:12px;background:var(--card);
+}
+.task-tabs button{
+  min-height:38px;padding:7px 15px;border-radius:9px;
+  font-size:13px;color:var(--ink-soft);white-space:nowrap;
+}
+.task-tabs button[aria-pressed="true"]{
+  background:var(--accent-bg);color:var(--accent);font-weight:700;
+}
+.task-tab-count{margin-left:5px;font-family:var(--data);font-size:12px}
+.task-tab-body{max-width:860px;margin:0 auto}
+.ivy-head{display:flex;align-items:end;justify-content:space-between;gap:16px;margin:4px 2px 12px}
+.ivy-head h2{font-size:20px;letter-spacing:-.02em}
+.ivy-head p{font-size:12.5px;color:var(--ink-soft);margin-top:2px}
+.ivy-meter{font-family:var(--data);font-size:13px;color:var(--accent);white-space:nowrap}
+.ivy-now{
+  position:relative;padding:17px 18px 16px;margin-bottom:14px;
+  border:1px solid var(--today-line);border-radius:16px;background:var(--today-bg);
+}
+.ivy-now-label{font-family:var(--data);font-size:11px;letter-spacing:.18em;color:var(--accent);margin-bottom:8px}
+.ivy-now-main{display:flex;align-items:flex-start;gap:12px}
+.ivy-rank{
+  flex:0 0 auto;display:grid;place-items:center;width:32px;height:32px;
+  border-radius:50%;background:var(--accent);color:var(--on-fill);
+  font-family:var(--data);font-weight:700;
+}
+.ivy-copy{flex:1;min-width:0}
+.ivy-title{font-size:18px;font-weight:700;line-height:1.4;word-break:break-word}
+.ivy-meta{margin-top:4px;font-size:12.5px;color:var(--ink-soft)}
+.ivy-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:14px;padding-left:44px}
+.ivy-actions button,.today-action,.ivy-order button{
+  min-height:34px;padding:6px 11px;border:1px solid var(--rule);border-radius:9px;
+  background:var(--card);font-size:12.5px;color:var(--ink-soft);
+}
+.ivy-actions .complete{border-color:var(--done);color:var(--done)}
+.ivy-section-title{display:flex;align-items:center;gap:10px;margin:18px 2px 6px;font-size:12px;letter-spacing:.12em;color:var(--ink-faint)}
+.ivy-section-title::after{content:'';height:1px;background:var(--rule-soft);flex:1}
+.ivy-list{background:var(--card);border:1px solid var(--rule-soft);border-radius:14px;padding:2px 14px}
+.ivy-item{display:flex;align-items:center;gap:11px;padding:12px 2px;border-bottom:1px solid var(--rule-faint)}
+.ivy-item:last-child{border-bottom:none}
+.ivy-item .ivy-rank{width:28px;height:28px;background:var(--paper);color:var(--ink-soft);border:1px solid var(--rule)}
+.ivy-item .ivy-title{font-size:14.5px;font-weight:600}
+.ivy-order{display:flex;gap:3px;margin-left:auto;flex:0 0 auto}
+.ivy-order button{width:32px;padding:0;font-size:13px}
+.ivy-order button:disabled{opacity:.28;cursor:default}
+.ivy-add-link{display:block;width:100%;margin-top:12px;padding:11px;border:1px dashed var(--rule);border-radius:11px;color:var(--accent);font-size:13px;text-align:center}
+.today-action{margin-left:auto;white-space:nowrap}
+.today-action.on{border-color:var(--accent);background:var(--accent-bg);color:var(--accent)}
+.today-rank-badge{display:inline-block;margin-left:7px;padding:1px 7px;border-radius:999px;background:var(--accent-bg);color:var(--accent);font-family:var(--data);font-size:11px}
+.task-all-panel{background:var(--card);border:1px solid var(--rule-soft);border-radius:14px;padding:4px 16px 14px}
+.task-all-panel .trow{align-items:center}
+.task-completed .today-action{display:none}
+
+/* 予定が重なっても既存カードの幅を等分しない。後の予定を少し右へ重ねる。 */
+.ev{box-sizing:border-box}
+.ev:hover{z-index:30!important}
+
+/* 種類編集：大きいプリセットから選び、必要なときだけ自由色を使う。 */
+.cat-editor-row{align-items:flex-start;padding:13px 0;gap:10px}
+.cat-editor-main{flex:1;min-width:0}
+.cat-name-line{display:flex;align-items:center;gap:9px}
+.cat-preview{width:16px;height:16px;border-radius:50%;flex:0 0 auto;border:1px solid color-mix(in srgb,var(--ink) 14%,transparent)}
+.cat-name-line input[type="text"]{flex:1;min-width:0}
+.cat-palette{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:9px}
+.cat-swatch{
+  width:34px;height:34px;border-radius:10px;border:2px solid transparent;
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ink) 10%,transparent);
+  position:relative;
+}
+.cat-swatch[aria-pressed="true"]{border-color:var(--ink)}
+.cat-swatch[aria-pressed="true"]::after{
+  content:'✓';position:absolute;inset:0;display:grid;place-items:center;
+  color:white;font-weight:800;text-shadow:0 1px 3px rgba(0,0,0,.55);
+}
+.cat-custom{position:relative;display:flex;align-items:center;justify-content:center;min-height:34px;padding:0 10px;border:1px solid var(--rule);border-radius:9px;font-size:12px;color:var(--ink-soft);cursor:pointer;overflow:hidden}
+.cat-custom input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+@media (max-width:767px){
+  .task-tabs{width:100%;display:grid;grid-template-columns:repeat(3,1fr)}
+  .task-tabs button{padding-left:7px;padding-right:7px}
+  .task-tab-body{max-width:none}
+  .ivy-now{padding:15px 14px}.ivy-actions{padding-left:0}
+  .ivy-title{font-size:16px}.ivy-item{align-items:flex-start}.ivy-order{padding-top:1px}
+  .today-action{margin-left:0;align-self:center;max-width:120px;white-space:normal;line-height:1.3}
+  .cat-editor-row{flex-wrap:wrap}.cat-editor-main{flex-basis:100%}.cat-moves{margin-left:auto}
+}
+
 </style>
 </head>
 <body>
@@ -972,7 +1065,7 @@ dialog::backdrop{background:rgba(20,33,43,.42)}
 <dialog id="catDlg">
   <div class="sheet compact-sheet">
     <div class="sheet-head"><div><h3>種類を編集</h3></div><button class="sheet-close" id="catClose" aria-label="閉じる">×</button></div>
-    <p class="hint">色と名前は好きに決めていい。並び順もそのまま入力画面に出る。</p>
+    <p class="hint">まずプリセットから選び、必要なときだけ「その他」で自由な色を選べます。並び順も入力画面に反映されます。</p>
     <div id="catEdit"></div>
     <button class="cat-add" id="catAdd">＋ 種類を追加</button>
     <p class="hint" id="catNote"></p>
@@ -1467,6 +1560,7 @@ function toGoogle(it){
     ev.extendedProperties.private.dueTime = it.start || '';
     ev.extendedProperties.private.done    = it.done ? '1' : '';
     ev.extendedProperties.private.today   = it.today || '';
+    ev.extendedProperties.private.todayRank = it.todayRank ? String(it.todayRank) : '';
     return ev;
   }
 
@@ -1511,7 +1605,8 @@ function fromGoogle(ev){
     if(priv.kind === 'task' || priv.kind === 'due'){
       return { ...base, kind:'task', date: ev.start.date, endDate: ev.start.date,
                start: priv.dueTime || '', end:'',
-               done: priv.done === '1', today: priv.today || '' };
+               done: priv.done === '1', today: priv.today || '',
+               todayRank: Number(priv.todayRank) || 0 };
     }
     return { ...base, kind:'event', date: ev.start.date, endDate: last, start:'', end:'' };
   }
@@ -1593,10 +1688,11 @@ let PERIODS = [
      date, endDate,                     // event / task のみ
      start, end,                        // 'HH:MM'
      done,                              // task のみ：完了したか
-     today }                            // task のみ：「今日やる」に選んだ日 'YYYY-MM-DD'
+     today, todayRank }                 // task のみ：今日の6件に選んだ日 / その日の優先順位
 
    today は真偽値ではなく日付。読むときに「今日と同じ日付か」を見るだけなので、
-   日付が変われば選択は自動で外れる。毎日リセットするための書き込みが発生しない。
+   日付が変われば選択は自動で外れる。todayRank はその日の優先順位（1がNOW）。
+   毎日リセットするための書き込みは不要。
 
    種別は3つ。カレンダーに出るのは class と event だけで、
    task はタスク画面にしか出ない（予定とタスクを混ぜないため）。
@@ -1692,9 +1788,24 @@ const tasks     = () => items.filter(it => it.kind === 'task');
 const openTasks = () => tasks().filter(it => !it.done)
                                .sort((a,b) => a.date.localeCompare(b.date));
 
-/* 「今日やる」に選んであるか。today は日付なので、日付が変われば勝手に外れる */
-const isPicked    = it => it.kind === 'task' && !it.done && it.today === today();
-const pickedToday = () => openTasks().filter(isPicked);
+/* 「今日の6件」に選んであるか。today は日付なので、日付が変われば勝手に外れる */
+const isPicked = it => it.kind === 'task' && !it.done && it.today === today();
+const todayRankOf = it => Number(it.todayRank) > 0 ? Number(it.todayRank) : 9999;
+const pickedToday = () => openTasks().filter(isPicked)
+  .sort((a,b) => todayRankOf(a) - todayRankOf(b) || a.date.localeCompare(b.date) || a.title.localeCompare(b.title));
+
+/* 古いデータには順位が無いので、画面上では1..nに補正する。
+   保存は、追加・削除・並び替えが起きたタイミングでまとめて行う。 */
+function normalizeTodayRanks(saveChanged = false){
+  const list = pickedToday();
+  const changed = [];
+  list.forEach((it, i) => {
+    const rank = i + 1;
+    if(it.todayRank !== rank){ it.todayRank = rank; changed.push(it); }
+  });
+  if(saveChanged) changed.forEach(persist);
+  return list;
+}
 
 /* ---------- 帯にする予定を選ぶ ----------
    帯に行くもの：日をまたぐ予定 / 時刻なしの予定（タスクと授業は対象外）
@@ -1826,63 +1937,130 @@ function scrollToNow(){
 }
 
 /* ==========================================================
-   タスク画面
+   タスク画面 — 今日 / すべて / 完了
    ----------------------------------------------------------
-   期限切れ / これから / 完了済み の3つに分ける。
-   完了済みは畳んでおく（残っているものだけを見せたいため）
+   「今日」はアイビーメソッド型。選んだタスクを順位づけし、1位をNOWとして強調する。
+   期限は「すべて」側の分類として残し、「今日取り組む」と「締切」を混同しない。
    ========================================================== */
-let showDone = false;
+let taskTab = 'today';
 
-function taskRow(it){
+function taskMeta(it){
+  const c = catOf(it);
+  return `${esc(c.name)} ・ ${dateText(it)}`;
+}
+
+function taskRow(it, opts = {}){
   const n = diffDays(it.date, today());
   const picked = isPicked(it);
-  const pick = it.done ? ''
-    : `<button class="tpick ${picked ? 'on' : ''}" data-today="${it.id}"
-         aria-label="${picked ? '今日やるから外す' : '今日やるに入れる'}"
-         title="${picked ? '今日やるから外す' : '今日やるに入れる'}">${picked ? '×' : '＋'}</button>`;
+  const rank = picked && Number(it.todayRank) > 0 ? Number(it.todayRank) : '';
+  const todayAction = opts.todayAction && !it.done
+    ? `<button class="today-action ${picked ? 'on' : ''}" data-today="${it.id}">${picked ? '今日から外す' : '今日の6件に追加'}</button>`
+    : '';
 
   return `<div class="trow ${urgency(n)} ${it.done ? 'is-done' : ''} ${it._unsaved ? 'unsaved' : ''} ${it.id===recentId ? 'just-added' : ''}">
-    <button class="tcheck" data-toggle="${it.id}" aria-label="完了にする">✓</button>
+    <button class="tcheck" data-toggle="${it.id}" aria-label="${it.done ? '未完了に戻す' : '完了にする'}">✓</button>
     <span class="tbody" data-id="${it.id}" role="button" tabindex="0">
-      <span class="ttitle">${catDot(it)}${esc(it.title)}</span>
+      <span class="ttitle">${catDot(it)}${esc(it.title)}${rank && opts.showRank ? `<span class="today-rank-badge">今日 #${rank}</span>` : ''}</span>
       <span class="tmeta">${dateText(it)}</span>
       ${it.memo ? `<span class="tmemo">${esc(it.memo.split('\n')[0])}</span>` : ''}
     </span>
-    ${pick}
+    ${todayAction}
     <span class="tdue">${dueLabel(n, it.done)}</span>
   </div>`;
 }
 
-function renderTasks(){
-  const all = tasks();
+function renderTodayTasks(){
+  const picked = normalizeTodayRanks(false);
+  const now = picked[0];
+  const next = picked.slice(1);
+
+  let h = `<div class="task-tab-body">
+    <div class="ivy-head"><div><h2>今日の6件</h2><p>上から順に、ひとつずつ進めます。</p></div><span class="ivy-meter">${picked.length} / 6</span></div>`;
+
+  if(!now){
+    h += `<div class="tasks-panel"><p class="tempty">今日取り組むタスクはまだ選ばれていません。<br>「すべて」から今日やるものを選んでください。</p></div>
+      <button class="ivy-add-link" data-task-tab="all">すべてのタスクから選ぶ</button></div>`;
+    return h;
+  }
+
+  const n = diffDays(now.date, today());
+  h += `<section class="ivy-now ${now._unsaved ? 'unsaved' : ''}">
+    <div class="ivy-now-label">NOW</div>
+    <div class="ivy-now-main">
+      <span class="ivy-rank">1</span>
+      <div class="ivy-copy" data-id="${now.id}" role="button" tabindex="0">
+        <div class="ivy-title">${catDot(now)}${esc(now.title)}</div>
+        <div class="ivy-meta">${taskMeta(now)} ・ ${dueLabel(n, false).replace(/<[^>]+>/g,'')}</div>
+      </div>
+    </div>
+    <div class="ivy-actions">
+      <button class="complete" data-toggle="${now.id}">✓ 完了</button>
+      <button data-id="${now.id}" class="ivy-edit">編集</button>
+      <button data-today="${now.id}">今日から外す</button>
+    </div>
+  </section>`;
+
+  if(next.length){
+    h += `<div class="ivy-section-title">NEXT</div><div class="ivy-list">`;
+    next.forEach((it, index) => {
+      const rank = index + 2;
+      h += `<div class="ivy-item ${it._unsaved ? 'unsaved' : ''}">
+        <span class="ivy-rank">${rank}</span>
+        <div class="ivy-copy tbody" data-id="${it.id}" role="button" tabindex="0">
+          <div class="ivy-title">${catDot(it)}${esc(it.title)}</div>
+          <div class="ivy-meta">${taskMeta(it)}</div>
+        </div>
+        <div class="ivy-order" aria-label="優先順位">
+          <button data-ivy-move="up" data-id="${it.id}" aria-label="優先順位を上げる">↑</button>
+          <button data-ivy-move="down" data-id="${it.id}" aria-label="優先順位を下げる" ${rank === picked.length ? 'disabled' : ''}>↓</button>
+        </div>
+        <button class="tcheck" data-toggle="${it.id}" aria-label="完了にする">✓</button>
+      </div>`;
+    });
+    h += `</div>`;
+  }
+
+  h += `<button class="ivy-add-link" data-task-tab="all">＋ 今日の6件に追加する</button></div>`;
+  return h;
+}
+
+function renderAllTasks(){
   const open = openTasks();
-  const done = all.filter(it => it.done).sort((a,b) => b.date.localeCompare(a.date));
-  const picked = open.filter(isPicked);
-  const rest = open.filter(it => !isPicked(it));
+  normalizeTodayRanks(false);
   const bucket = it => { const n = diffDays(it.date, today()); return n < 0 ? 0 : n <= 1 ? 1 : n <= 7 ? 2 : 3; };
   const GROUPS = ['期限切れ', '今日・明日', '今週', 'それ以降'];
 
-  let focus = `<div class="tasks-panel"><section class="tgroup today"><h3>今日やる<span class="tcount">${picked.length}</span></h3>`;
-  focus += picked.length ? picked.map(taskRow).join('')
-    : '<p class="tempty">今日やるタスクはまだありません。<br>右側の「＋」から今日取り組むものを選べます。</p>';
-  focus += '</section></div>';
-
-  let restHtml = '<div class="tasks-panel"><div class="tasks-panel-title"><b>すべてのタスク</b><span>' + rest.length + '件</span></div>';
-  if(!all.length){
-    restHtml += '<p class="tempty">まだタスクがありません。上の「＋ タスクを追加」から登録できます。</p>';
+  let h = '<div class="task-tab-body task-all-panel"><div class="tasks-panel-title"><b>すべてのタスク</b><span>' + open.length + '件</span></div>';
+  if(!open.length){
+    h += '<p class="tempty">未完了のタスクはありません。上の「＋ タスクを追加」から登録できます。</p>';
   }else{
     GROUPS.forEach((name, i) => {
-      const list = rest.filter(it => bucket(it) === i);
+      const list = open.filter(it => bucket(it) === i);
       if(!list.length) return;
-      restHtml += `<section class="tgroup ${i === 0 ? 'overdue' : ''}"><h3>${name}<span class="tcount">${list.length}</span></h3>${list.map(taskRow).join('')}</section>`;
+      h += `<section class="tgroup ${i === 0 ? 'overdue' : ''}"><h3>${name}<span class="tcount">${list.length}</span></h3>${list.map(it => taskRow(it,{todayAction:true,showRank:true})).join('')}</section>`;
     });
-    if(!rest.length) restHtml += '<section class="tgroup"><p class="tempty">ほかに残っているタスクはありません。</p></section>';
-    if(done.length){
-      restHtml += `<section class="tgroup"><button class="tdone-head" id="toggleDone">${showDone ? '▾' : '▸'} 完了済み <span class="tcount">${done.length}</span></button>${showDone ? done.map(taskRow).join('') : ''}</section>`;
-    }
   }
-  restHtml += '</div>';
-  document.getElementById('grid').innerHTML = `<div class="tasks-layout"><aside class="task-focus">${focus}</aside><main class="task-rest">${restHtml}</main></div>`;
+  return h + '</div>';
+}
+
+function renderDoneTasks(){
+  const done = tasks().filter(it => it.done).sort((a,b) => b.date.localeCompare(a.date));
+  let h = '<div class="task-tab-body task-all-panel task-completed"><div class="tasks-panel-title"><b>完了</b><span>' + done.length + '件</span></div>';
+  h += done.length ? done.map(it => taskRow(it)).join('') : '<p class="tempty">完了したタスクはまだありません。</p>';
+  return h + '</div>';
+}
+
+function renderTasks(){
+  const openN = openTasks().length;
+  const doneN = tasks().filter(it => it.done).length;
+  const todayN = normalizeTodayRanks(false).length;
+  const tabs = `<div class="task-tabs" role="tablist" aria-label="タスク表示">
+    <button data-task-tab="today" role="tab" aria-pressed="${taskTab==='today'}">今日<span class="task-tab-count">${todayN}</span></button>
+    <button data-task-tab="all" role="tab" aria-pressed="${taskTab==='all'}">すべて<span class="task-tab-count">${openN}</span></button>
+    <button data-task-tab="done" role="tab" aria-pressed="${taskTab==='done'}">完了<span class="task-tab-count">${doneN}</span></button>
+  </div>`;
+  const body = taskTab === 'today' ? renderTodayTasks() : taskTab === 'done' ? renderDoneTasks() : renderAllTasks();
+  document.getElementById('grid').innerHTML = tabs + body;
 }
 
 /* 今日ビュー。狭い画面の既定。
@@ -2014,8 +2192,8 @@ const toMin  = t => { const [h,m] = t.split(':').map(Number); return h*60 + m; }
 const minTop = m => (m - DAY_START*60) / 60 * HOUR_PX;
 const clamp  = (v,lo,hi) => Math.max(lo, Math.min(hi, v));
 
-/* その日の時刻つき予定を、重なりを避けて左右に並べる。
-   重なりの「かたまり」ごとに列数を数えて、かたまり内で幅を分け合う。 */
+/* その日の時刻つき予定について、重なり順を決める。
+   横幅は分割せず、evHtml() 側で列番号ぶんだけ右へずらして重ねる。 */
 function layoutDay(list){
   const evs = list.map(it => {
     const s = toMin(it.start);
@@ -2055,10 +2233,12 @@ function evHtml(ev, scale = HOUR_PX){
   const e = clamp(ev.e, s + 15, HI);
   const top = (s - LO) / 60 * scale;
   const hgt = (e - s) / 60 * scale - 2;
-  const w   = 100 / ev.cols;
+  // 横幅は予定数で等分しない。重複時は少し右へずらして重ねるだけにする。
+  // これなら予定を1件追加しても、既存カードが突然1/2・1/3幅にならない。
+  const offset = Math.min(ev.col, 4) * 10;
   const time = ev.it.end ? `${ev.it.start}–${ev.it.end}` : ev.it.start;
   return `<button class="ev ${ev.it.kind}${hgt < 32 ? ' short' : ''}${ev.it._unsaved ? ' unsaved' : ''}${ev.it.id===recentId ? ' just-added' : ''}" data-id="${ev.it.id}"
-    style="${catVars(ev.it)}top:${top}px;height:${hgt}px;left:calc(${ev.col*w}% + 1px);width:calc(${w}% - 3px)"
+    style="${catVars(ev.it)}top:${top}px;height:${hgt}px;left:${1 + offset}px;right:2px;width:auto;z-index:${4 + Math.min(ev.col,4)}"
     ><span class="t">${esc(ev.it.title)}</span><span class="s">${esc(time)}</span>${hgt >= 56 && ev.it.memo ? `<span class="m">${esc(ev.it.memo.split('\n')[0])}</span>` : ''}</button>`;
 }
 
@@ -2141,14 +2321,19 @@ function initClicks(){
     }
   });
 
-  // タスク画面：チェックで完了、＋で今日やる、本文で編集
+  // タスク画面：タブ、完了、今日の6件、順位変更、本文編集
   document.getElementById('grid').addEventListener('click', e => {
+    const tab = e.target.closest('[data-task-tab]');
+    if(tab){ taskTab = tab.dataset.taskTab; render(); return; }
     const chk = e.target.closest('[data-toggle]');
     if(chk){ toggleDone(chk.dataset.toggle); return; }
+    const move = e.target.closest('[data-ivy-move]');
+    if(move){ moveTodayTask(move.dataset.id, move.dataset.ivyMove); return; }
     const pick = e.target.closest('[data-today]');
     if(pick){ togglePick(pick.dataset.today); return; }
-    if(e.target.closest('#toggleDone')){ showDone = !showDone; render(); return; }
-    const body = e.target.closest('.tbody');
+    const edit = e.target.closest('.ivy-edit');
+    if(edit){ openSheet(items.find(i => i.id === edit.dataset.id)); return; }
+    const body = e.target.closest('.tbody, .ivy-copy[data-id]');
     if(body) openSheet(items.find(i => i.id === body.dataset.id));
   });
 
@@ -2196,15 +2381,16 @@ function toggleDone(id){
   if(!it) return;
 
   const apply = () => {
+    const wasPicked = isPicked(it);
     it.done = !it.done;
-    if(it.done) it.today = '';       // 終わったら今日やるからも外す
+    if(it.done){ it.today = ''; it.todayRank = 0; }
     render();
     persist(it);
+    if(wasPicked && it.done) normalizeTodayRanks(true);
   };
 
   // 完了にするときだけ、チェックが入るのを見せてから消す。
-  // すぐ消えると「押せたのか」「何が消えたのか」が分からない
-  const row = document.querySelector(`[data-toggle="${it.id}"]`)?.closest('.trow, .drow');
+  const row = document.querySelector(`[data-toggle="${it.id}"]`)?.closest('.trow, .drow, .ivy-item, .ivy-now');
   if(row && !it.done && !calmly()){
     row.classList.add('checking');
     tapFeedback(12);
@@ -2216,10 +2402,36 @@ function toggleDone(id){
 
 function togglePick(id){
   const it = items.find(i => i.id === id);
-  if(!it) return;
-  it.today = isPicked(it) ? '' : today();
+  if(!it || it.done) return;
+
+  if(isPicked(it)){
+    it.today = '';
+    it.todayRank = 0;
+    persist(it);
+    normalizeTodayRanks(true);
+    showToast('今日の6件から外しました');
+  }else{
+    const current = normalizeTodayRanks(false);
+    it.today = today();
+    it.todayRank = current.length + 1;
+    persist(it);
+    showToast(`今日の${it.todayRank}番に追加しました`);
+  }
   render();
-  persist(it);
+}
+
+function moveTodayTask(id, direction){
+  const list = normalizeTodayRanks(false);
+  const index = list.findIndex(it => it.id === id);
+  if(index < 0) return;
+  const to = direction === 'up' ? index - 1 : index + 1;
+  if(to < 0 || to >= list.length) return;
+  const a = list[index], b = list[to];
+  const rank = a.todayRank;
+  a.todayRank = b.todayRank;
+  b.todayRank = rank;
+  persist(a); persist(b);
+  render();
 }
 
 /* ==========================================================
@@ -2483,13 +2695,26 @@ document.getElementById('gresync').addEventListener('click', async () => {
    ========================================================== */
 const catDlg = document.getElementById('catDlg');
 let draftCats = [];
+const CAT_PRESETS = [
+  '#1F5FA8','#3857B8','#68459F','#8A4463','#B4535A',
+  '#C65D21','#A16207','#7A5A12','#526A78','#4B668A'
+];
 
 function drawCatEdit(){
   document.getElementById('catEdit').innerHTML = draftCats.map((c, i) => `
-    <div class="cat-row">
-      <input type="color" value="${esc(c.color)}" data-i="${i}" data-f="color" aria-label="色">
-      <input type="text"  value="${esc(c.name)}"  data-i="${i}" data-f="name"
-             maxlength="12" placeholder="名前">
+    <div class="cat-row cat-editor-row">
+      <div class="cat-editor-main">
+        <div class="cat-name-line">
+          <span class="cat-preview" style="background:${esc(c.color)}" aria-hidden="true"></span>
+          <input type="text" value="${esc(c.name)}" data-i="${i}" data-f="name" maxlength="12" placeholder="名前">
+        </div>
+        <div class="cat-palette" role="group" aria-label="${esc(c.name || '種類')}の色">
+          ${CAT_PRESETS.map(color => `<button type="button" class="cat-swatch" style="background:${color}" data-color="${color}" data-i="${i}" aria-label="${color}" aria-pressed="${c.color.toLowerCase()===color.toLowerCase()}"></button>`).join('')}
+          <label class="cat-custom">その他
+            <input type="color" value="${esc(c.color)}" data-i="${i}" data-f="color" aria-label="その他の色を選ぶ">
+          </label>
+        </div>
+      </div>
       <span class="cat-moves">
         <button class="cat-move" data-up="${i}" aria-label="この種類を上へ移動" ${i === 0 ? 'disabled' : ''}>↑</button>
         <button class="cat-move" data-down="${i}" aria-label="この種類を下へ移動" ${i === draftCats.length - 1 ? 'disabled' : ''}>↓</button>
@@ -2497,7 +2722,6 @@ function drawCatEdit(){
       <button class="cat-del" data-del="${i}" aria-label="この種類を消す">×</button>
     </div>`).join('');
 
-  // 消したときに、その種類が付いている予定が何件あるか知らせる
   const lost = draftCats.length < cats.length
     ? items.filter(it => it.cat && !draftCats.some(c => c.id === it.cat)).length
     : 0;
@@ -2521,7 +2745,18 @@ document.getElementById('catEdit').addEventListener('input', e => {
   draftCats[Number(el.dataset.i)][el.dataset.f] = el.value;
 });
 
+document.getElementById('catEdit').addEventListener('change', e => {
+  const el = e.target;
+  if(el.matches('input[type="color"][data-i]')) drawCatEdit();
+});
+
 document.getElementById('catEdit').addEventListener('click', e => {
+  const swatch = e.target.closest('[data-color]');
+  if(swatch){
+    draftCats[Number(swatch.dataset.i)].color = swatch.dataset.color;
+    drawCatEdit();
+    return;
+  }
   const up = e.target.closest('[data-up]');
   const down = e.target.closest('[data-down]');
   const del = e.target.closest('[data-del]');
@@ -2677,6 +2912,7 @@ document.getElementById('save').addEventListener('click', async () => {
     if(kind === 'task'){
       data.done  = editing?.done  || false;
       data.today = editing?.today || '';
+      data.todayRank = editing?.todayRank || 0;
     }
   }
 
@@ -2816,7 +3052,11 @@ function migrate(list){
     // 締切(due) はタスク(task) に統合された。古いデータを読むための変換なので消さないこと
     if(it.kind === 'due'){
       changed = true;
-      return { ...it, kind:'task', done: it.done === true };
+      return { ...it, kind:'task', done: it.done === true, todayRank:Number(it.todayRank)||0 };
+    }
+    if(it.kind === 'task' && !Number.isFinite(Number(it.todayRank))){
+      changed = true;
+      return { ...it, todayRank:0 };
     }
     return it;
   });
@@ -2932,7 +3172,7 @@ document.getElementById('gsync').addEventListener('click', async () => {
    Google Calendar / OAuthの通信処理とは独立して動作する。
    ========================================================== */
 (() => {
-  const APP_VERSION = "1.0.0";
+  const APP_VERSION = "1.1.0";
   const INSTALL_DISMISSED_KEY = "schedule:pwa-install-dismissed";
   let deferredInstallPrompt = null;
   let swRegistration = null;
