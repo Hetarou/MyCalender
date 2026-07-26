@@ -1087,6 +1087,12 @@ dialog::backdrop{background:rgba(20,33,43,.42)}
   font-family:var(--data);font-size:18px;font-weight:700;letter-spacing:.08em;
 }
 .push-code-expire{font-size:11.5px;color:var(--ink-faint)}
+.push-managed-panel{
+  margin-top:16px;padding:12px;border:1px solid var(--rule-soft);
+  border-radius:12px;background:var(--paper);
+}
+.push-managed-panel .push-panel-head{margin-bottom:4px}
+.notify-google-toggle{margin-top:10px}
 .push-scheduler-panel{
   margin-top:16px;padding-top:14px;border-top:1px solid var(--rule-soft);
 }
@@ -1345,17 +1351,28 @@ dialog::backdrop{background:rgba(20,33,43,.42)}
                 </div>
               </div>
 
+              <div class="push-managed-panel" id="pushManagedPanel" hidden>
+                <div class="push-panel-head">
+                  <div>
+                    <b>自動通知</b>
+                    <span class="push-count" id="pushManagedCount">0件予約</span>
+                  </div>
+                  <button class="sbtn primary" id="pushManagedSync">今すぐ同期</button>
+                </div>
+                <p class="shint" id="pushManagedHint">予定・タスク・Ivy Leeの内容から通知予約を自動生成します。</p>
+              </div>
+
               <div class="push-scheduler-panel" id="pushSchedulerPanel" hidden>
                 <div class="push-panel-head">
                   <div>
-                    <b>日時指定通知 — A3テスト</b>
+                    <b>診断：日時指定Push</b>
                     <span class="push-count" id="pushScheduleCount">0件</span>
                   </div>
                   <button class="sbtn" id="pushScheduleRefresh">更新</button>
                 </div>
 
                 <p class="shint">
-                  Phase 4A3の予約エンジン確認用です。ここで作った通知は、scheduleを閉じていても登録端末すべてへ送信されます。
+                  通知基盤の診断用です。通常は上の「自動通知」が予定・タスク・Ivy Leeから予約を管理します。
                 </p>
 
                 <div class="push-schedule-form">
@@ -1381,14 +1398,14 @@ dialog::backdrop{background:rgba(20,33,43,.42)}
               </div>
 
               <p class="shint" id="pushHint">
-                Phase 4A3では、任意日時の予約・変更・取消・二重送信防止を確認します。予定・タスクとの自動連携はA4で行います。
+                Phase 4A4では、予定・タスク・Ivy Leeの変更に合わせてWeb Push予約を自動同期します。
               </p>
             </div>
 
             <div class="notify-card">
               <h4>予定・授業</h4>
               <div class="field">
-                <label for="fEventReminder">Google Calendarで知らせる</label>
+                <label for="fEventReminder">Web Pushで知らせる</label>
                 <select id="fEventReminder">
                   <option value="-1">通知しない</option>
                   <option value="0">開始時</option>
@@ -1399,23 +1416,66 @@ dialog::backdrop{background:rgba(20,33,43,.42)}
                   <option value="60">1時間前</option>
                 </select>
               </div>
-              <p class="shint">開始時刻がある予定・授業が対象です。Googleカレンダー接続中は、新規・編集した予定へこの設定を反映します。</p>
+              <p class="shint">開始時刻がある予定・授業を、登録済みの全端末へ通知します。</p>
             </div>
+
             <div class="notify-card">
               <h4>タスク</h4>
-              <p class="sline">通知機能は準備中</p>
-              <p class="shint">PWAを閉じていても確実に届くWeb Push方式で実装する予定です。現在は、届かない可能性がある予約通知は使用しません。</p>
+              <label class="notify-check">
+                <input id="fTaskPrevNotify" type="checkbox">
+                <span>前日に知らせる</span>
+              </label>
+              <div class="field">
+                <label for="fTaskPrevTime">前日の通知時刻</label>
+                <input id="fTaskPrevTime" type="time">
+              </div>
+              <label class="notify-check">
+                <input id="fTaskSameNotify" type="checkbox">
+                <span>期限当日に知らせる</span>
+              </label>
+              <div class="field">
+                <label for="fTaskSameTime">当日の通知時刻</label>
+                <input id="fTaskSameTime" type="time">
+              </div>
+              <p class="shint">完了したタスクの通知予約は自動的に取り消します。</p>
+            </div>
+
+            <div class="notify-card">
+              <h4>Ivy Lee</h4>
+              <label class="notify-check">
+                <input id="fIvyPlanNotify" type="checkbox">
+                <span>明日の6件を決める時間に知らせる</span>
+              </label>
+              <div class="field">
+                <label for="fIvyPlanTime">計画する時刻</label>
+                <input id="fIvyPlanTime" type="time">
+              </div>
+              <label class="notify-check">
+                <input id="fIvyNowNotify" type="checkbox">
+                <span>NOWが残っていれば夜に確認する</span>
+              </label>
+              <div class="field">
+                <label for="fIvyNowTime">NOW確認時刻</label>
+                <input id="fIvyNowTime" type="time">
+              </div>
+              <p class="shint">明日の計画が済んだ場合やNOWを完了した場合は、不要な予約を自動同期で消します。</p>
             </div>
           </div>
 
           <div class="notify-google-line">
             <div class="copy">
-              <b>Googleカレンダーへの反映</b>
-              <span id="notifyGoogleHint">Googleカレンダーと接続すると、予定・授業の予約通知をGoogle側へ設定できます。</span>
+              <b>Google Calendar通知（任意）</b>
+              <span id="notifyGoogleHint">Web Pushとは別系統です。両方を有効にすると同じ予定で2回通知される場合があります。</span>
             </div>
             <button class="sbtn" id="notifyGoogleApply" hidden>既存の予定へ反映</button>
           </div>
-          <p class="notify-note" id="notifyLimitNote"><strong>重要:</strong> schedule単体では、アプリを閉じた状態での時刻指定通知を行いません。予定・授業の予約通知はGoogle Calendarを使用します。テスト通知は通知権限の確認専用です。</p>
+
+          <label class="notify-check notify-google-toggle">
+            <input id="fGoogleReminderEnabled" type="checkbox">
+            <span>Google Calendarにも予定・授業の通知を設定する</span>
+          </label>
+
+          <p class="notify-note" id="notifyLimitNote"><strong>A4:</strong> 予定・タスク・Ivy Leeの通知はscheduleのWeb Pushで予約します。Google Calendar通知は必要な場合だけ補助として使用できます。</p>
         </section>
 
         <section class="settings-section">
@@ -1678,7 +1738,12 @@ let prefs = {
   taskSameDayNotify:true,
   taskNotifyTime:'09:00',
   taskPrevDayNotify:true,
-  taskPrevNotifyTime:'20:00'
+  taskPrevNotifyTime:'20:00',
+  ivyPlanNotify:true,
+  ivyPlanNotifyTime:'20:00',
+  ivyNowNotify:false,
+  ivyNowNotifyTime:'22:00',
+  googleReminderEnabled:false
 };
 
 const themeOf = () => THEMES.find(t => t.id === prefs.theme) || THEMES[0];
@@ -2084,11 +2149,14 @@ function nextWeekdayFrom(weekday){
 }
 
 
-/* ---------- 通知設定をGoogleイベントへ反映 ----------
-   信頼できる予約通知はGoogle Calendarに任せる。
-   対象は開始時刻のある予定・授業のみ。PWAの通知権限とは独立して設定する。 */
+/* ---------- Google Calendarへの補助通知 ----------
+   A4ではWeb Pushを主系統とし、Google通知は任意の補助ミラーとして扱う。
+   対象は開始時刻のある予定・授業のみ。 */
 function googleReminderFor(it){
   if(!((it.kind === 'class' || it.kind === 'event') && it.start)) return undefined;
+  if(!prefs.googleReminderEnabled){
+    return { useDefault:false, overrides:[] };
+  }
   const mins = Number(prefs.eventReminderMinutes);
   if(Number.isFinite(mins) && mins >= 0){
     return { useDefault:false, overrides:[{ method:'popup', minutes:mins }] };
@@ -3382,6 +3450,7 @@ function persist(it){
     .then(() => {
       showWarn(null);
       if(it.id !== before) render();   // Google側の本物のidに変わったときだけ描き直す
+      if(typeof queueManagedPushSync === 'function') queueManagedPushSync(300);
     })
     .catch(err => {
       it._unsaved = true;
@@ -3479,6 +3548,11 @@ function applyPrefs(){
   if(!/^\d{2}:\d{2}$/.test(String(prefs.taskNotifyTime || ''))) prefs.taskNotifyTime = '09:00';
   if(typeof prefs.taskPrevDayNotify !== 'boolean') prefs.taskPrevDayNotify = true;
   if(!/^\d{2}:\d{2}$/.test(String(prefs.taskPrevNotifyTime || ''))) prefs.taskPrevNotifyTime = '20:00';
+  if(typeof prefs.ivyPlanNotify !== 'boolean') prefs.ivyPlanNotify = true;
+  if(!/^\d{2}:\d{2}$/.test(String(prefs.ivyPlanNotifyTime || ''))) prefs.ivyPlanNotifyTime = '20:00';
+  if(typeof prefs.ivyNowNotify !== 'boolean') prefs.ivyNowNotify = false;
+  if(!/^\d{2}:\d{2}$/.test(String(prefs.ivyNowNotifyTime || ''))) prefs.ivyNowNotifyTime = '22:00';
+  if(typeof prefs.googleReminderEnabled !== 'boolean') prefs.googleReminderEnabled = false;
 
   buildPeriodPicks();
   if(typeof refreshNotificationEngine === 'function') refreshNotificationEngine();
@@ -3487,7 +3561,11 @@ function applyPrefs(){
 async function savePrefs(){
   applyPrefs();
   render();
-  try{ await Backend.savePrefs(prefs); showWarn(null); }
+  try{
+    await Backend.savePrefs(prefs);
+    showWarn(null);
+    if(typeof queueManagedPushSync === 'function') queueManagedPushSync(250);
+  }
   catch(err){ showWarn('<strong>設定を保存できなかった。</strong><br>' + CANT_SAVE); }
 }
 
@@ -3580,6 +3658,15 @@ function prepareSettingsPage(){
   document.getElementById('catSummary').textContent = cats.map(c => c.name).join('・') || '（未設定）';
 
   document.getElementById('fEventReminder').value = String(Number.isFinite(Number(prefs.eventReminderMinutes)) ? Number(prefs.eventReminderMinutes) : 10);
+  document.getElementById('fTaskPrevNotify').checked = prefs.taskPrevDayNotify === true;
+  document.getElementById('fTaskPrevTime').value = prefs.taskPrevNotifyTime || '20:00';
+  document.getElementById('fTaskSameNotify').checked = prefs.taskSameDayNotify === true;
+  document.getElementById('fTaskSameTime').value = prefs.taskNotifyTime || '09:00';
+  document.getElementById('fIvyPlanNotify').checked = prefs.ivyPlanNotify === true;
+  document.getElementById('fIvyPlanTime').value = prefs.ivyPlanNotifyTime || '20:00';
+  document.getElementById('fIvyNowNotify').checked = prefs.ivyNowNotify === true;
+  document.getElementById('fIvyNowTime').value = prefs.ivyNowNotifyTime || '22:00';
+  document.getElementById('fGoogleReminderEnabled').checked = prefs.googleReminderEnabled === true;
 
   validPeriodSnapshot = PERIODS.map(p => ({...p}));
   buildPeriodEdit(); drawSync(); drawNotificationSettings();
@@ -3985,12 +4072,16 @@ document.getElementById('del').addEventListener('click', () => {
 
   beginWrite();
   Backend.remove(gone)
-    .then(() => showWarn(null))
+    .then(() => {
+      showWarn(null);
+      if(typeof queueManagedPushSync === 'function') queueManagedPushSync(150);
+    })
     .catch(err => {
       items.push(gone);              // 消せなかったので戻す
       showWarn('<strong>削除できなかった。</strong><br>' +
                CANT_SAVE + '<br><span class="warn-detail">' + esc(err.message) + '</span>');
       render();
+      if(typeof queueManagedPushSync === 'function') queueManagedPushSync(150);
     })
     .finally(endWrite);
 });
@@ -4100,11 +4191,17 @@ function drawNotificationSettings(){
   if(googleApply) googleApply.hidden = Backend.name !== 'google';
   if(googleHint){
     googleHint.textContent = Backend.name === 'google'
-      ? '設定変更後は「既存の予定へ反映」で、保存済みの予定・授業にも適用できます。新規・編集時は自動反映されます。'
-      : 'Googleカレンダーとつなぐと、予定・授業の予約通知をGoogle側へ設定できます。';
+      ? (prefs.googleReminderEnabled
+          ? 'Google通知も有効です。Web Pushと重複する場合があります。「既存の予定へ反映」で保存済み予定を更新できます。'
+          : 'Google通知はOFFです。Web Pushを主に使います。既存のGoogle通知を消す場合は「既存の予定へ反映」を押してください。')
+      : 'Googleカレンダー通知は任意の補助機能です。Web Pushだけでも通知できます。';
   }
 
+  const googleToggle = document.getElementById('fGoogleReminderEnabled');
+  if(googleToggle) googleToggle.checked = prefs.googleReminderEnabled === true;
+
   if(typeof drawWebPushFoundation === 'function') drawWebPushFoundation();
+  if(typeof refreshManagedPushStatus === 'function') refreshManagedPushStatus().catch(() => {});
 }
 
 async function requestScheduleNotifications(){
@@ -4381,6 +4478,7 @@ async function refreshWebPushFoundation(){
     );
     renderPushDevices(account);
     await refreshPushSchedules();
+    if(typeof refreshManagedPushStatus === 'function') await refreshManagedPushStatus();
   }catch(err){
     if(err.status === 401){
       clearPushDevice();
@@ -4476,6 +4574,7 @@ async function connectWebPushFoundation(){
     await savePrefs();
     drawNotificationSettings();
     await refreshWebPushFoundation();
+    if(typeof queueManagedPushSync === 'function') queueManagedPushSync(150);
     showToast('Web Pushに接続しました');
   }catch(err){
     showWarn('<strong>Web Pushに接続できませんでした。</strong><br><span class="warn-detail">' + esc(err.message) + '</span>');
@@ -4571,6 +4670,7 @@ async function claimPushPairCode(){
     });
     input.value = '';
     await refreshWebPushFoundation();
+    if(typeof queueManagedPushSync === 'function') queueManagedPushSync(150);
     showToast(`${Number(result?.deviceCount || 0)}台の端末を同じグループにリンクしました`);
   }catch(err){
     showWarn('<strong>端末をリンクできませんでした。</strong><br><span class="warn-detail">' + esc(err.message) + '</span>');
@@ -4654,6 +4754,225 @@ async function disconnectWebPushFoundation(){
   await removePushDevice(current.deviceId);
 }
 
+
+/* ==========================================================
+   Phase 4A4 — 予定・タスク・Ivy Lee 自動通知連携
+   ========================================================== */
+const MANAGED_PUSH_HORIZON_DAYS = 120;
+const IVY_PUSH_HORIZON_DAYS = 30;
+let managedPushSyncTimer = null;
+let managedPushSyncRunning = false;
+let managedPushSyncAgain = false;
+
+function localDateTimeMs(dateStr, timeStr){
+  if(!dateStr || !/^\d{2}:\d{2}$/.test(String(timeStr || ''))) return NaN;
+  const [y,m,d] = dateStr.split('-').map(Number);
+  const [hh,mm] = timeStr.split(':').map(Number);
+  return new Date(y, m - 1, d, hh, mm, 0, 0).getTime();
+}
+
+function futureManagedReminder(list, reminder){
+  const dueAt = Number(reminder?.dueAt);
+  if(!Number.isFinite(dueAt) || dueAt <= Date.now() + 5000) return;
+  list.push({
+    sourceKey:String(reminder.sourceKey || '').slice(0,180),
+    title:String(reminder.title || 'schedule').slice(0,80),
+    body:String(reminder.body || '').slice(0,180),
+    dueAt,
+    data: reminder.data && typeof reminder.data === 'object' ? reminder.data : {}
+  });
+}
+
+function buildManagedPushReminders(){
+  const out = [];
+  const now = new Date();
+  const maxDate = fmt(addDays(now, MANAGED_PUSH_HORIZON_DAYS));
+  const eventMins = Number(prefs.eventReminderMinutes);
+
+  if(Number.isFinite(eventMins) && eventMins >= 0){
+    for(const it of items){
+      if(it.kind === 'event' && it.start){
+        futureManagedReminder(out, {
+          sourceKey:`event:${it.id}:${it.date}`,
+          title:it.title,
+          body:eventMins === 0 ? '予定の開始時刻です。' : `${eventMins}分後に予定が始まります。`,
+          dueAt:localDateTimeMs(it.date, it.start) - eventMins * 60000,
+          data:{kind:'event', date:it.date, itemId:it.id}
+        });
+      }
+
+      if(it.kind === 'class' && it.start){
+        let cursor = parse(today());
+        const limit = it.termEnd && it.termEnd < maxDate ? it.termEnd : maxDate;
+
+        for(let guard=0; guard<=MANAGED_PUSH_HORIZON_DAYS && fmt(cursor) <= limit; guard++){
+          const ds = fmt(cursor);
+          if(cursor.getDay() === Number(it.weekday)){
+            futureManagedReminder(out, {
+              sourceKey:`class:${it.id}:${ds}`,
+              title:it.title,
+              body:eventMins === 0 ? '授業の開始時刻です。' : `${eventMins}分後に授業が始まります。`,
+              dueAt:localDateTimeMs(ds, it.start) - eventMins * 60000,
+              data:{kind:'event', date:ds, itemId:it.id}
+            });
+          }
+          cursor = addDays(cursor, 1);
+        }
+      }
+    }
+  }
+
+  for(const it of openTasks()){
+    if(!it.date) continue;
+
+    if(prefs.taskPrevDayNotify){
+      const prev = fmt(addDays(parse(it.date), -1));
+      futureManagedReminder(out, {
+        sourceKey:`task:${it.id}:prev`,
+        title:it.title,
+        body:'期限は明日です。',
+        dueAt:localDateTimeMs(prev, prefs.taskPrevNotifyTime),
+        data:{kind:'task', date:it.date, itemId:it.id}
+      });
+    }
+
+    if(prefs.taskSameDayNotify){
+      futureManagedReminder(out, {
+        sourceKey:`task:${it.id}:same`,
+        title:it.title,
+        body:it.start ? `今日が期限です。期限時刻は${it.start}です。` : '今日が期限です。',
+        dueAt:localDateTimeMs(it.date, prefs.taskNotifyTime),
+        data:{kind:'task', date:it.date, itemId:it.id}
+      });
+    }
+  }
+
+  if(prefs.ivyPlanNotify){
+    for(let i=0; i<IVY_PUSH_HORIZON_DAYS; i++){
+      const planDay = fmt(addDays(now, i));
+      const tomorrow = fmt(addDays(parse(planDay), 1));
+      if(pickedFor(tomorrow).length > 0) continue;
+
+      futureManagedReminder(out, {
+        sourceKey:`ivy:plan:${planDay}`,
+        title:'明日の6件',
+        body:'明日取り組むタスクを6件まで選びましょう。',
+        dueAt:localDateTimeMs(planDay, prefs.ivyPlanNotifyTime),
+        data:{kind:'ivy', action:'tomorrow', date:tomorrow}
+      });
+    }
+  }
+
+  if(prefs.ivyNowNotify){
+    for(let i=0; i<=1; i++){
+      const ds = fmt(addDays(now, i));
+      const nowTask = pickedFor(ds)[0];
+      if(!nowTask) continue;
+
+      futureManagedReminder(out, {
+        sourceKey:`ivy:now:${ds}:${nowTask.id}`,
+        title:'NOWを確認',
+        body:`「${nowTask.title}」がまだNOWに残っています。`,
+        dueAt:localDateTimeMs(ds, prefs.ivyNowNotifyTime),
+        data:{kind:'ivy', action:'now', date:ds, itemId:nowTask.id}
+      });
+    }
+  }
+
+  const unique = new Map();
+  for(const r of out) if(r.sourceKey) unique.set(r.sourceKey, r);
+
+  return [...unique.values()]
+    .sort((a,b) => a.dueAt - b.dueAt)
+    .slice(0,500);
+}
+
+function canSyncManagedPush(){
+  return pushApiConfigured() && Boolean(getPushDevice()) && webPushSupported();
+}
+
+function queueManagedPushSync(delay=350){
+  clearTimeout(managedPushSyncTimer);
+  managedPushSyncTimer = setTimeout(() => {
+    syncManagedPushNotifications({silent:true}).catch(err =>
+      console.warn('managed push sync failed:', err)
+    );
+  }, delay);
+}
+
+async function syncManagedPushNotifications({silent=false} = {}){
+  if(!canSyncManagedPush()) return null;
+
+  if(managedPushSyncRunning){
+    managedPushSyncAgain = true;
+    return null;
+  }
+
+  managedPushSyncRunning = true;
+  const button = document.getElementById('pushManagedSync');
+  if(button){ button.disabled = true; button.textContent = '同期中…'; }
+
+  try{
+    const reminders = buildManagedPushReminders();
+    const result = await pushApiFetch('/v4/reminders/sync', {
+      method:'POST',
+      body:JSON.stringify({
+        timezone:TZ,
+        generatedAt:Date.now(),
+        reminders
+      })
+    });
+
+    if(!silent) showToast(`${Number(result?.scheduledCount || 0)}件の自動通知を同期しました`);
+    await refreshManagedPushStatus();
+    return result;
+  }catch(err){
+    const hint = document.getElementById('pushManagedHint');
+    if(hint){
+      hint.textContent = err.status === 404
+        ? 'Cloudflare WorkerをPhase 4A4版へ更新してください。'
+        : `自動通知を同期できません: ${err.message}`;
+    }
+    if(!silent){
+      showWarn('<strong>自動通知を同期できませんでした。</strong><br><span class="warn-detail">' + esc(err.message) + '</span>');
+    }
+    throw err;
+  }finally{
+    managedPushSyncRunning = false;
+    if(button){ button.disabled = false; button.textContent = '今すぐ同期'; }
+    if(managedPushSyncAgain){
+      managedPushSyncAgain = false;
+      queueManagedPushSync(200);
+    }
+  }
+}
+
+async function refreshManagedPushStatus(){
+  const panel = document.getElementById('pushManagedPanel');
+  const count = document.getElementById('pushManagedCount');
+  const hint = document.getElementById('pushManagedHint');
+  if(!panel || !count || !hint) return;
+
+  panel.hidden = !canSyncManagedPush();
+  if(panel.hidden) return;
+
+  try{
+    const result = await pushApiFetch('/v4/reminders', {method:'GET'});
+    const reminders = Array.isArray(result?.reminders) ? result.reminders : [];
+    count.textContent = `${reminders.length}件予約`;
+
+    if(reminders.length){
+      hint.textContent = `次回: ${formatPushScheduleTime(reminders[0].dueAt)}。変更時に自動同期します。`;
+    }else{
+      hint.textContent = '現在、未来の自動通知予約はありません。';
+    }
+  }catch(err){
+    count.textContent = '確認失敗';
+    hint.textContent = err.status === 404
+      ? 'Cloudflare WorkerをPhase 4A4版へ更新してください。'
+      : `状態を確認できません: ${err.message}`;
+  }
+}
 
 /* ==========================================================
    Phase 4A3 — 日時指定通知予約エンジン
@@ -4815,7 +5134,8 @@ async function syncNotificationPrefsToGoogle(){
   try{
     for(const it of targets){ await Backend.upsert(it); ok++; }
     lastSync = new Date().toTimeString().slice(0,5); drawSync();
-    showToast(`${ok}件の予定・授業に通知設定を反映しました`);
+    showToast(`${ok}件の予定・授業にGoogle通知設定を反映しました`);
+    if(typeof queueManagedPushSync === 'function') queueManagedPushSync(200);
   }catch(err){
     showWarn('<strong>通知設定をGoogleへ反映できなかった。</strong><br><span class="warn-detail">' + esc(err.message) + '</span>');
   }finally{
@@ -4841,6 +5161,15 @@ function openNotificationTarget(data){
     return;
   }
 
+  if(data.kind === 'ivy'){
+    state.screen = 'task';
+    taskTab = 'today';
+    render();
+    window.scrollTo({ top:0, behavior:'auto' });
+    if(data.action === 'tomorrow') setTimeout(openTomorrowPlanner, 80);
+    return;
+  }
+
   if(data.kind === 'event' && data.date){
     state.screen = 'calendar';
     state.cursor = parse(data.date);
@@ -4859,14 +5188,16 @@ function handleNotificationUrl(){
     const kind = url.searchParams.get('notifyKind');
     const date = url.searchParams.get('notifyDate') || '';
     const itemId = url.searchParams.get('notifyItem') || '';
+    const action = url.searchParams.get('notifyAction') || '';
 
     if(!kind) return;
 
-    openNotificationTarget({ kind, date, itemId });
+    openNotificationTarget({ kind, date, itemId, action });
 
     url.searchParams.delete('notifyKind');
     url.searchParams.delete('notifyDate');
     url.searchParams.delete('notifyItem');
+    url.searchParams.delete('notifyAction');
 
     history.replaceState(
       null,
@@ -4909,8 +5240,42 @@ document.getElementById('notifyTest').addEventListener('click', async () => {
 document.getElementById('notifyGoogleApply').addEventListener('click', syncNotificationPrefsToGoogle);
 document.getElementById('fEventReminder').addEventListener('change', async e => {
   prefs.eventReminderMinutes = Number(e.target.value);
-  await savePrefs(); drawNotificationSettings();
-  if(Backend.name === 'google') showToast('新規・編集する予定にはこの通知設定が適用されます');
+  await savePrefs();
+  drawNotificationSettings();
+  showToast('予定・授業のWeb Push設定を保存しました');
+});
+document.getElementById('fTaskPrevNotify').addEventListener('change', async e => {
+  prefs.taskPrevDayNotify = e.target.checked; await savePrefs();
+});
+document.getElementById('fTaskPrevTime').addEventListener('change', async e => {
+  prefs.taskPrevNotifyTime = e.target.value || '20:00'; await savePrefs();
+});
+document.getElementById('fTaskSameNotify').addEventListener('change', async e => {
+  prefs.taskSameDayNotify = e.target.checked; await savePrefs();
+});
+document.getElementById('fTaskSameTime').addEventListener('change', async e => {
+  prefs.taskNotifyTime = e.target.value || '09:00'; await savePrefs();
+});
+document.getElementById('fIvyPlanNotify').addEventListener('change', async e => {
+  prefs.ivyPlanNotify = e.target.checked; await savePrefs();
+});
+document.getElementById('fIvyPlanTime').addEventListener('change', async e => {
+  prefs.ivyPlanNotifyTime = e.target.value || '20:00'; await savePrefs();
+});
+document.getElementById('fIvyNowNotify').addEventListener('change', async e => {
+  prefs.ivyNowNotify = e.target.checked; await savePrefs();
+});
+document.getElementById('fIvyNowTime').addEventListener('change', async e => {
+  prefs.ivyNowNotifyTime = e.target.value || '22:00'; await savePrefs();
+});
+document.getElementById('fGoogleReminderEnabled').addEventListener('change', async e => {
+  prefs.googleReminderEnabled = e.target.checked;
+  await savePrefs();
+  drawNotificationSettings();
+  if(Backend.name === 'google') showToast('既存のGoogle予定は「既存の予定へ反映」で更新できます');
+});
+document.getElementById('pushManagedSync').addEventListener('click', () => {
+  syncManagedPushNotifications({silent:false}).catch(() => {});
 });
 
 /* ==========================================================
@@ -5030,6 +5395,7 @@ async function useBackend(be){
   render();
   refreshNotificationEngine();
   handleNotificationUrl();
+  if(typeof queueManagedPushSync === 'function') queueManagedPushSync(1400);
 }
 
 document.getElementById('gsync').addEventListener('click', () => {
@@ -5132,7 +5498,7 @@ document.getElementById('gsync').addEventListener('click', () => {
    Google Calendar / OAuthの通信処理とは独立して動作する。
    ========================================================== */
 (() => {
-  const APP_VERSION = "1.4.0-a3";
+  const APP_VERSION = "1.4.0-a4";
   const INSTALL_DISMISSED_KEY = "schedule:pwa-install-dismissed";
   let deferredInstallPrompt = null;
   let swRegistration = null;

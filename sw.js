@@ -3,7 +3,7 @@
  * Google Calendar / OAuthなど外部オリジンの通信には介入しない。
  */
 
-const CACHE_VERSION = "v1.4.0-a3";
+const CACHE_VERSION = "v1.4.0-a4";
 const STATIC_CACHE = `schedule-static-${CACHE_VERSION}`;
 const PAGE_CACHE = `schedule-pages-${CACHE_VERSION}`;
 
@@ -157,7 +157,8 @@ self.addEventListener("notificationclick", event => {
           type: "SCHEDULE_NOTIFICATION_CLICK",
           kind: data.kind || "",
           date: data.date || "",
-          itemId: data.itemId || ""
+          itemId: data.itemId || "",
+          action: data.action || ""
         });
         return;
       }
@@ -167,16 +168,16 @@ self.addEventListener("notificationclick", event => {
       const q = new URLSearchParams({
         notifyKind: data.kind || "",
         notifyDate: data.date || "",
-        notifyItem: data.itemId || ""
+        notifyItem: data.itemId || "",
+        notifyAction: data.action || ""
       });
       await self.clients.openWindow("./?" + q.toString());
     }
   })());
 });
 
-/* 将来Web Pushの送信側を追加したとき、そのまま受けられる受け口。
-   Phase 4A3では任意日時の通知予約エンジンを追加し、
-   アプリを閉じた状態でも登録端末へWeb Pushを配信できる。 */
+/* Web Push受信口。
+   Phase 4A4では予定・タスク・Ivy Leeの自動予約通知を受信する。 */
 self.addEventListener("push", event => {
   if(!event.data) return;
   let payload = {};
