@@ -3924,6 +3924,68 @@ async function syncNotificationPrefsToGoogle(){
   }
 }
 
+
+/* ---------- 通知をタップした時の画面遷移 ----------
+   予約通知の時刻監視とは独立した処理。
+   Service Workerが開いたURL / postMessage を受け取って対象画面へ移動する。 */
+let notificationDeepLinkHandled = false;
+
+function openNotificationTarget(data){
+  if(!data) return;
+
+  if(data.kind === 'task'){
+    state.screen = 'task';
+    taskTab = 'today';
+    render();
+    window.scrollTo({ top:0, behavior:'auto' });
+    return;
+  }
+
+  if(data.kind === 'event' && data.date){
+    state.screen = 'calendar';
+    state.cursor = parse(data.date);
+    state.view = narrowScreen() ? 'day' : 'week';
+    render();
+    window.scrollTo({ top:0, behavior:'auto' });
+  }
+}
+
+function handleNotificationUrl(){
+  if(notificationDeepLinkHandled) return;
+  notificationDeepLinkHandled = true;
+
+  try{
+    const url = new URL(location.href);
+    const kind = url.searchParams.get('notifyKind');
+    const date = url.searchParams.get('notifyDate') || '';
+    const itemId = url.searchParams.get('notifyItem') || '';
+
+    if(!kind) return;
+
+    openNotificationTarget({ kind, date, itemId });
+
+    url.searchParams.delete('notifyKind');
+    url.searchParams.delete('notifyDate');
+    url.searchParams.delete('notifyItem');
+
+    history.replaceState(
+      null,
+      '',
+      url.pathname + (url.search ? url.search : '') + url.hash
+    );
+  }catch(err){
+    console.warn('notification deep link failed:', err);
+  }
+}
+
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.addEventListener('message', event => {
+    if(event.data?.type === 'SCHEDULE_NOTIFICATION_CLICK'){
+      openNotificationTarget(event.data);
+    }
+  });
+}
+
 document.getElementById('notifyEnable').addEventListener('click', requestScheduleNotifications);
 document.getElementById('notifyTest').addEventListener('click', async () => {
   if(await showScheduleNotification({key:'test-' + Date.now(), title:'schedule', body:'テスト通知です。通知表示は正常に動作しています。', kind:'test'})) showToast('テスト通知を送りました');
@@ -4154,7 +4216,7 @@ document.getElementById('gsync').addEventListener('click', () => {
    Google Calendar / OAuthの通信処理とは独立して動作する。
    ========================================================== */
 (() => {
-  const APP_VERSION = "1.3.2";
+  const APP_VERSION = "1.3.3";
   const INSTALL_DISMISSED_KEY = "schedule:pwa-install-dismissed";
   let deferredInstallPrompt = null;
   let swRegistration = null;
