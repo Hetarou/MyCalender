@@ -916,6 +916,133 @@ dialog::backdrop{background:rgba(20,33,43,.42)}
   .cat-palette{grid-template-columns:repeat(5,38px)}.cat-list-controls{gap:1px}
 }
 
+/* ==========================================================
+   Phase 2 — Ivy soft limits / tomorrow planning / carry-over
+   ========================================================== */
+.ivy-meter.over{color:var(--due);font-weight:700}
+.ivy-over-note{margin:6px 2px 0;font-size:12px;color:var(--due)}
+.ivy-drag{
+  flex:0 0 auto;display:none;align-items:center;justify-content:center;
+  width:30px;height:30px;border-radius:8px;color:var(--ink-faint);
+  font-family:var(--data);font-size:16px;cursor:grab;user-select:none;
+}
+.ivy-drag:active{cursor:grabbing}
+@media (hover:hover) and (pointer:fine){
+  .ivy-drag{display:flex}
+}
+[data-plan-drop].drag-over{
+  outline:2px solid var(--accent);outline-offset:2px;
+}
+.is-dragging{opacity:.38}
+.ivy-focus-btn{
+  min-height:32px;padding:5px 9px;border:1px solid var(--accent);
+  border-radius:9px;background:var(--card);color:var(--accent);
+  font-size:12px;white-space:nowrap;
+}
+.ivy-tomorrow-card{
+  display:flex;align-items:center;justify-content:space-between;gap:14px;
+  margin-top:18px;padding:14px 16px;border:1px solid var(--rule-soft);
+  border-radius:14px;background:var(--card);
+}
+.ivy-tomorrow-card.ready{
+  border-color:var(--today-line);background:var(--today-bg);
+}
+.ivy-tomorrow-copy b{display:block;font-size:14px}
+.ivy-tomorrow-copy span{display:block;margin-top:2px;font-size:12px;color:var(--ink-soft)}
+.ivy-tomorrow-card button{
+  flex:0 0 auto;min-height:38px;padding:7px 12px;border:1px solid var(--rule);
+  border-radius:9px;background:var(--card);font-size:12.5px;color:var(--ink);
+}
+.ivy-tomorrow-card.ready button{border-color:var(--accent);color:var(--accent)}
+.ivy-plan-sheet{width:min(620px,calc(100vw - 24px))}
+.ivy-plan-summary{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  margin:3px 0 10px;padding:10px 12px;border-radius:11px;background:var(--paper);
+}
+.ivy-plan-summary b{font-size:13px}.ivy-plan-summary span{font-family:var(--data);font-size:12px;color:var(--accent)}
+.ivy-plan-create{
+  width:100%;min-height:42px;margin:0 0 14px;padding:9px 13px;
+  border:1px dashed var(--accent);border-radius:10px;background:var(--accent-bg);
+  color:var(--accent);font-size:13px;font-weight:600;text-align:center;
+}
+.ivy-plan-create:hover{filter:brightness(.98)}
+.ivy-plan-list,.ivy-candidate-list{border:1px solid var(--rule-soft);border-radius:12px;background:var(--card);overflow:hidden}
+.ivy-plan-row{
+  display:flex;align-items:center;gap:9px;padding:10px 11px;border-bottom:1px solid var(--rule-faint);
+}
+.ivy-plan-row:last-child{border-bottom:none}
+.ivy-plan-row .rank{
+  flex:0 0 auto;display:grid;place-items:center;width:27px;height:27px;
+  border-radius:50%;background:var(--paper);font-family:var(--data);font-size:12px;color:var(--ink-soft)
+}
+.ivy-plan-row .copy{flex:1;min-width:0}
+.ivy-plan-row .copy b{display:block;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ivy-plan-row .copy small{display:block;margin-top:1px;font-size:11.5px;color:var(--ink-faint)}
+.ivy-plan-row .mini-actions{display:flex;gap:3px;flex:0 0 auto}
+.ivy-plan-row .mini-actions button,
+.ivy-plan-row .add-plan{
+  min-width:32px;min-height:32px;padding:5px 8px;border:1px solid var(--rule);
+  border-radius:8px;background:var(--card);font-size:12px;color:var(--ink-soft);
+}
+.ivy-plan-row .add-plan{color:var(--accent);border-color:var(--today-line)}
+.ivy-plan-section-title{
+  margin:16px 2px 7px;font-size:12px;letter-spacing:.08em;color:var(--ink-faint)
+}
+.carry-list{display:flex;flex-direction:column;border:1px solid var(--rule-soft);border-radius:12px;overflow:hidden}
+.carry-row{
+  display:flex;align-items:flex-start;gap:11px;padding:11px 12px;border-bottom:1px solid var(--rule-faint);background:var(--card)
+}
+.carry-row:last-child{border-bottom:none}
+.carry-row input{margin-top:3px;width:18px;height:18px;accent-color:var(--accent)}
+.carry-row span{flex:1;min-width:0}
+.carry-row b{display:block;font-size:13.5px}
+.carry-row small{display:block;margin-top:2px;font-size:11.5px;color:var(--ink-faint)}
+@media (max-width:767px){
+  .ivy-tomorrow-card{align-items:flex-start}.ivy-tomorrow-card button{max-width:130px}
+  .ivy-plan-row{padding-left:9px;padding-right:9px}
+  .ivy-plan-row .mini-actions button{min-width:36px}
+}
+
+
+/* ==========================================================
+   Phase 3 — 通知
+   ========================================================== */
+.notify-status-line{
+  display:flex;align-items:center;gap:9px;margin-top:12px;
+}
+.notify-status-line .status-dot{margin-top:0}
+.notify-grid{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;
+  margin-top:16px;
+}
+.notify-card{
+  padding:14px;border:1px solid var(--rule-soft);border-radius:12px;background:var(--card);
+}
+.notify-card h4{font-size:13px;margin-bottom:10px}
+.notify-card .field{margin-bottom:10px}
+.notify-card .field:last-child{margin-bottom:0}
+.notify-check{
+  display:flex;align-items:center;gap:9px;min-height:42px;padding:8px 0;
+  font-size:13.5px;color:var(--ink);
+}
+.notify-check input{width:18px;height:18px;accent-color:var(--accent)}
+.notify-note{
+  margin-top:12px;padding:10px 12px;border:1px solid var(--rule-soft);
+  border-radius:10px;background:var(--paper);font-size:12px;line-height:1.6;color:var(--ink-soft);
+}
+.notify-note strong{color:var(--ink);font-weight:600}
+.notify-google-line{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  margin-top:12px;padding-top:12px;border-top:1px solid var(--rule-faint);
+}
+.notify-google-line .copy{min-width:0}
+.notify-google-line .copy b{display:block;font-size:13px}
+.notify-google-line .copy span{display:block;margin-top:2px;font-size:12px;color:var(--ink-soft)}
+@media (max-width:620px){
+  .notify-grid{grid-template-columns:1fr}
+  .notify-google-line{align-items:flex-start;flex-direction:column}
+}
+
 </style>
 </head>
 <body>
@@ -1028,6 +1155,78 @@ dialog::backdrop{background:rgba(20,33,43,.42)}
         </section>
 
 
+
+        <section class="settings-section" id="notifySettings">
+          <div class="settings-title-row">
+            <div>
+              <h3>通知</h3>
+              <p class="settings-desc">予定の直前と、タスクの期限を知らせます。</p>
+            </div>
+            <span class="status-dot" id="notifyDot" aria-hidden="true"></span>
+          </div>
+
+          <div class="notify-status-line">
+            <p class="sline" id="notifyState">確認中</p>
+          </div>
+
+          <div class="srow">
+            <button class="sbtn primary" id="notifyEnable">通知を有効にする</button>
+            <button class="sbtn" id="notifyTest" hidden>テスト通知</button>
+          </div>
+
+          <div class="notify-grid">
+            <div class="notify-card">
+              <h4>予定・授業</h4>
+              <div class="field">
+                <label for="fEventReminder">いつ知らせるか</label>
+                <select id="fEventReminder">
+                  <option value="-1">通知しない</option>
+                  <option value="0">開始時</option>
+                  <option value="5">5分前</option>
+                  <option value="10">10分前</option>
+                  <option value="15">15分前</option>
+                  <option value="30">30分前</option>
+                  <option value="60">1時間前</option>
+                </select>
+              </div>
+              <p class="shint">開始時刻がある予定・授業が対象です。</p>
+            </div>
+
+            <div class="notify-card">
+              <h4>タスク</h4>
+              <label class="notify-check">
+                <input type="checkbox" id="fTaskSameNotify">
+                <span>期限日の朝に通知</span>
+              </label>
+              <div class="field" id="taskSameTimeField">
+                <label for="fTaskNotifyTime">当日の時刻</label>
+                <input type="time" id="fTaskNotifyTime" step="300">
+              </div>
+              <label class="notify-check">
+                <input type="checkbox" id="fTaskPrevNotify">
+                <span>前日にも通知</span>
+              </label>
+              <div class="field" id="taskPrevTimeField">
+                <label for="fTaskPrevNotifyTime">前日の時刻</label>
+                <input type="time" id="fTaskPrevNotifyTime" step="300">
+              </div>
+            </div>
+          </div>
+
+          <div class="notify-google-line">
+            <div class="copy">
+              <b>Googleカレンダーへの反映</b>
+              <span id="notifyGoogleHint">Google連携中は、予定・授業とタスク前日の通知をGoogle側にも設定できます。</span>
+            </div>
+            <button class="sbtn" id="notifyGoogleApply" hidden>Googleへ反映</button>
+          </div>
+
+          <p class="notify-note" id="notifyLimitNote">
+            <strong>iPhone:</strong> このアプリ自身の時刻通知は、ホーム画面から起動したPWAで許可できます。
+            アプリが完全に閉じている間も確実に受けたい場合は、Googleカレンダー連携時の通知反映を併用してください。
+          </p>
+        </section>
+
         <section class="settings-section">
           <div class="settings-title-row">
             <div>
@@ -1094,6 +1293,41 @@ dialog::backdrop{background:rgba(20,33,43,.42)}
     <div class="acts sheet-actions">
       <button class="btn-cancel" id="catCancel">やめる</button>
       <button class="btn-save" id="catSave">保存</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="ivyPlanDlg">
+  <div class="sheet compact-sheet ivy-plan-sheet">
+    <div class="sheet-head">
+      <div>
+        <p class="eyebrow">IVY PLAN</p>
+        <h3 id="ivyPlanTitle">明日の6件</h3>
+      </div>
+      <button class="sheet-close" id="ivyPlanClose" aria-label="閉じる">×</button>
+    </div>
+    <p class="hint" id="ivyPlanHint">明日やる重要なことを最大6件を目安に選び、順番を決めます。</p>
+    <div id="ivyPlanBody"></div>
+    <div class="acts sheet-actions">
+      <button class="btn-save" id="ivyPlanDone">決定</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="carryDlg">
+  <div class="sheet compact-sheet">
+    <div class="sheet-head">
+      <div>
+        <p class="eyebrow">CARRY OVER</p>
+        <h3>昨日の未完了</h3>
+      </div>
+      <button class="sheet-close" id="carryClose" aria-label="閉じる">×</button>
+    </div>
+    <p class="hint">昨日の6件で終わらなかったものがあります。今日も続けるものだけ選んでください。</p>
+    <div id="carryBody"></div>
+    <div class="acts sheet-actions">
+      <button class="btn-cancel" id="carrySkip">今回は引き継がない</button>
+      <button class="btn-save" id="carryApply">選択したものを引き継ぐ</button>
     </div>
   </div>
 </dialog>
@@ -1242,7 +1476,15 @@ const THEMES = [
 ];
 
 /* 画面に関する設定。保存先に保存され、端末をまたいで揃う */
-let prefs = { theme:'paper', dayStart:0, dayEnd:24, periods:null };
+let prefs = {
+  theme:'paper', dayStart:0, dayEnd:24, periods:null, ivyCarrySeen:'',
+  notifyEnabled:false,
+  eventReminderMinutes:10,
+  taskSameDayNotify:true,
+  taskNotifyTime:'09:00',
+  taskPrevDayNotify:true,
+  taskPrevNotifyTime:'20:00'
+};
 
 const themeOf = () => THEMES.find(t => t.id === prefs.theme) || THEMES[0];
 
@@ -1557,6 +1799,49 @@ function nextWeekdayFrom(weekday){
   return fmt(d);
 }
 
+
+/* ---------- 通知設定をGoogleイベントへ反映 ----------
+   Google Calendarのremindersは「開始より何分前」で指定する。
+   タスクは終日イベントなので、前日通知だけをGoogle側へ反映する。
+   当日朝の通知はPWA側で扱う（終日イベント開始後の時刻はremindersでは表せないため）。 */
+function googleReminderFor(it){
+  if(!prefs.notifyEnabled) return null;
+
+  if((it.kind === 'class' || it.kind === 'event') && it.start){
+    const mins = Number(prefs.eventReminderMinutes);
+    if(Number.isFinite(mins) && mins >= 0){
+      return { useDefault:false, overrides:[{ method:'popup', minutes:mins }] };
+    }
+  }
+
+  if(it.kind === 'task' && prefs.taskPrevDayNotify){
+    const t = String(prefs.taskPrevNotifyTime || '20:00');
+    const [h,m] = t.split(':').map(Number);
+    if(Number.isFinite(h) && Number.isFinite(m)){
+      // 終日予定は期限日の0:00開始。前日HH:MMは、その開始の何分前かに変換できる。
+      const mins = (24 * 60) - (h * 60 + m);
+      if(mins >= 0 && mins <= 24 * 60){
+        return { useDefault:false, overrides:[{ method:'popup', minutes:mins }] };
+      }
+    }
+  }
+
+  return null;
+}
+
+let forceGoogleReminderSync = false;
+
+function attachGoogleReminder(ev, it){
+  const reminders = googleReminderFor(it);
+  if(reminders) ev.reminders = reminders;
+  else if(prefs.notifyEnabled || forceGoogleReminderSync){
+    // 通知機能を有効にしている間は、アプリ側の設定を正とする。
+    // 対象外・「通知しない」の項目に古いGoogle reminderが残らないよう明示的に空にする。
+    ev.reminders = { useDefault:false, overrides:[] };
+  }
+  return ev;
+}
+
 function toGoogle(it){
   const ev = {
     summary: it.title,
@@ -1571,7 +1856,7 @@ function toGoogle(it){
     let rule = 'RRULE:FREQ=WEEKLY;BYDAY=' + BYDAY[it.weekday];
     if(it.termEnd) rule += ';UNTIL=' + it.termEnd.replace(/-/g,'') + 'T235900Z';
     ev.recurrence = [rule];
-    return ev;
+    return attachGoogleReminder(ev, it);
   }
 
   if(it.kind === 'task'){
@@ -1581,9 +1866,10 @@ function toGoogle(it){
     ev.end   = { date: fmt(addDays(parse(it.date), 1)) };
     ev.extendedProperties.private.dueTime = it.start || '';
     ev.extendedProperties.private.done    = it.done ? '1' : '';
-    ev.extendedProperties.private.today   = it.today || '';
+    ev.extendedProperties.private.today   = it.today || '';       // v1.1互換
     ev.extendedProperties.private.todayRank = it.todayRank ? String(it.todayRank) : '';
-    return ev;
+    ev.extendedProperties.private.ivyPlan = JSON.stringify(it.ivyPlan || {});
+    return attachGoogleReminder(ev, it);
   }
 
   if(it.start){
@@ -1594,7 +1880,7 @@ function toGoogle(it){
     ev.start = { date: it.date };
     ev.end   = { date: fmt(addDays(parse(endOf(it)), 1)) };
   }
-  return ev;
+  return attachGoogleReminder(ev, it);
 }
 
 function fromGoogle(ev){
@@ -1625,10 +1911,16 @@ function fromGoogle(ev){
     const last = fmt(addDays(parse(ev.end.date), -1));   // Googleのendは翌日なので戻す
     // 'due' は 'task' の旧名。前の版で保存したデータを読むために残してある。消さないこと
     if(priv.kind === 'task' || priv.kind === 'due'){
+      let ivyPlan = {};
+      try{ ivyPlan = JSON.parse(priv.ivyPlan || '{}') || {}; }catch(e){ ivyPlan = {}; }
+      // v1.1までの today / todayRank も読み込む。ivyPlanへ移した後も互換用に残す。
+      if(priv.today && !Number(ivyPlan[priv.today])){
+        ivyPlan[priv.today] = Number(priv.todayRank) || 9999;
+      }
       return { ...base, kind:'task', date: ev.start.date, endDate: ev.start.date,
                start: priv.dueTime || '', end:'',
                done: priv.done === '1', today: priv.today || '',
-               todayRank: Number(priv.todayRank) || 0 };
+               todayRank: Number(priv.todayRank) || 0, ivyPlan };
     }
     return { ...base, kind:'event', date: ev.start.date, endDate: last, start:'', end:'' };
   }
@@ -1710,11 +2002,11 @@ let PERIODS = [
      date, endDate,                     // event / task のみ
      start, end,                        // 'HH:MM'
      done,                              // task のみ：完了したか
-     today, todayRank }                 // task のみ：今日の6件に選んだ日 / その日の優先順位
+     ivyPlan,                           // task のみ：日付ごとのアイビー順位 {"YYYY-MM-DD":1,...}
+     today, todayRank }                 // v1.1までとの互換用
 
-   today は真偽値ではなく日付。読むときに「今日と同じ日付か」を見るだけなので、
-   日付が変われば選択は自動で外れる。todayRank はその日の優先順位（1がNOW）。
-   毎日リセットするための書き込みは不要。
+   Phase 2では今日と明日の計画を同時に持てるよう、ivyPlanに日付ごとの順位を保存する。
+   today / todayRank は古い保存データとGoogle同期の互換用なので削除しない。
 
    種別は3つ。カレンダーに出るのは class と event だけで、
    task はタスク画面にしか出ない（予定とタスクを混ぜないため）。
@@ -1810,24 +2102,65 @@ const tasks     = () => items.filter(it => it.kind === 'task');
 const openTasks = () => tasks().filter(it => !it.done)
                                .sort((a,b) => a.date.localeCompare(b.date));
 
-/* 「今日の6件」に選んであるか。today は日付なので、日付が変われば勝手に外れる */
-const isPicked = it => it.kind === 'task' && !it.done && it.today === today();
-const todayRankOf = it => Number(it.todayRank) > 0 ? Number(it.todayRank) : 9999;
-const pickedToday = () => openTasks().filter(isPicked)
-  .sort((a,b) => todayRankOf(a) - todayRankOf(b) || a.date.localeCompare(b.date) || a.title.localeCompare(b.title));
+/* ---------- アイビー計画 ----------
+   v1.1までは today / todayRank の1日分だけを持っていた。
+   Phase 2からは ivyPlan = { "YYYY-MM-DD": 順位 } として、今日と明日を同時に計画できる。
+   today / todayRank は古いデータとGoogle同期の互換用に残す。 */
+function ensureIvyPlan(it){
+  if(!it.ivyPlan || typeof it.ivyPlan !== 'object' || Array.isArray(it.ivyPlan)) it.ivyPlan = {};
+  if(it.today && !Number(it.ivyPlan[it.today])){
+    it.ivyPlan[it.today] = Number(it.todayRank) || 9999;
+  }
+  return it.ivyPlan;
+}
+function planRank(it, dateStr){
+  const map = ensureIvyPlan(it);
+  const n = Number(map[dateStr]);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+function isPickedFor(it, dateStr){
+  return it.kind === 'task' && !it.done && planRank(it, dateStr) > 0;
+}
+const isPicked = it => isPickedFor(it, today());
 
-/* 古いデータには順位が無いので、画面上では1..nに補正する。
-   保存は、追加・削除・並び替えが起きたタイミングでまとめて行う。 */
-function normalizeTodayRanks(saveChanged = false){
-  const list = pickedToday();
+function pickedFor(dateStr){
+  return openTasks().filter(it => isPickedFor(it, dateStr))
+    .sort((a,b) => planRank(a,dateStr) - planRank(b,dateStr)
+      || a.date.localeCompare(b.date) || a.title.localeCompare(b.title));
+}
+const pickedToday = () => pickedFor(today());
+
+function setPlanRank(it, dateStr, rank){
+  const map = ensureIvyPlan(it);
+  if(Number(rank) > 0) map[dateStr] = Number(rank);
+  else delete map[dateStr];
+
+  // 今日だけはv1.1の互換欄にも反映する。
+  if(dateStr === today()){
+    it.today = Number(rank) > 0 ? dateStr : '';
+    it.todayRank = Number(rank) > 0 ? Number(rank) : 0;
+  }
+}
+
+/* 古いデータや削除後の飛び番を1..nへ詰める。 */
+function normalizePlanRanks(dateStr, saveChanged = false){
+  const list = pickedFor(dateStr);
   const changed = [];
   list.forEach((it, i) => {
     const rank = i + 1;
-    if(it.todayRank !== rank){ it.todayRank = rank; changed.push(it); }
+    if(planRank(it,dateStr) !== rank){
+      setPlanRank(it, dateStr, rank);
+      changed.push(it);
+    }
   });
   if(saveChanged) changed.forEach(persist);
   return list;
 }
+const normalizeTodayRanks = saveChanged => normalizePlanRanks(today(), saveChanged);
+
+function tomorrowStr(){ return fmt(addDays(new Date(), 1)); }
+function yesterdayStr(){ return fmt(addDays(new Date(), -1)); }
+
 
 /* ---------- 帯にする予定を選ぶ ----------
    帯に行くもの：日をまたぐ予定 / 時刻なしの予定（タスクと授業は対象外）
@@ -1974,7 +2307,7 @@ function taskMeta(it){
 function taskRow(it, opts = {}){
   const n = diffDays(it.date, today());
   const picked = isPicked(it);
-  const rank = picked && Number(it.todayRank) > 0 ? Number(it.todayRank) : '';
+  const rank = picked ? planRank(it, today()) : '';
   const todayAction = opts.todayAction && !it.done
     ? `<button class="today-action ${picked ? 'on' : ''}" data-today="${it.id}">${picked ? '今日から外す' : '今日の6件に追加'}</button>`
     : '';
@@ -1991,25 +2324,44 @@ function taskRow(it, opts = {}){
   </div>`;
 }
 
+function renderTomorrowPlanPrompt(){
+  const date = tomorrowStr();
+  const count = normalizePlanRanks(date, false).length;
+  const evening = new Date().getHours() >= 20;
+  const label = evening ? '明日の6件を決める' : '明日を計画';
+  const note = count
+    ? `明日は ${count} 件選択済みです。`
+    : evening ? '今日を終える前に、明日の優先順位を決めておきます。'
+              : '必要なら今のうちに明日の6件を決められます。';
+  return `<section class="ivy-tomorrow-card ${evening ? 'ready' : ''}">
+    <div class="ivy-tomorrow-copy"><b>${label}</b><span>${note}</span></div>
+    <button data-open-tomorrow>${count ? '見直す' : '選ぶ'}</button>
+  </section>`;
+}
+
 function renderTodayTasks(){
   const picked = normalizeTodayRanks(false);
   const now = picked[0];
   const next = picked.slice(1);
+  const over = picked.length > 6;
 
   let h = `<div class="task-tab-body">
-    <div class="ivy-head"><div><h2>今日の6件</h2><p>上から順に、ひとつずつ進めます。</p></div><span class="ivy-meter">${picked.length} / 6</span></div>`;
+    <div class="ivy-head"><div><h2>今日の6件</h2><p>上から順に、ひとつずつ進めます。</p></div><span class="ivy-meter ${over ? 'over' : ''}">${picked.length} / 6</span></div>
+    ${over ? '<p class="ivy-over-note">6件を超えています。必要なら「すべて」から今日の候補を見直してください。</p>' : ''}`;
 
   if(!now){
     h += `<div class="tasks-panel"><p class="tempty">今日取り組むタスクはまだ選ばれていません。<br>「すべて」から今日やるものを選んでください。</p></div>
-      <button class="ivy-add-link" data-task-tab="all">すべてのタスクから選ぶ</button></div>`;
+      <button class="ivy-add-link" data-task-tab="all">すべてのタスクから選ぶ</button>
+      ${renderTomorrowPlanPrompt()}</div>`;
     return h;
   }
 
   const n = diffDays(now.date, today());
-  h += `<section class="ivy-now ${now._unsaved ? 'unsaved' : ''}">
+  h += `<section class="ivy-now ${now._unsaved ? 'unsaved' : ''}" data-plan-drop="${now.id}" data-plan-date="${today()}">
     <div class="ivy-now-label">NOW</div>
     <div class="ivy-now-main">
       <span class="ivy-rank">1</span>
+      <span class="ivy-drag" draggable="true" data-plan-drag="${now.id}" data-plan-date="${today()}" title="ドラッグして並び替え" aria-hidden="true">⋮⋮</span>
       <div class="ivy-copy" data-id="${now.id}" role="button" tabindex="0">
         <div class="ivy-title">${catDot(now)}${esc(now.title)}</div>
         <div class="ivy-meta">${taskMeta(now)} ・ ${dueLabel(n, false).replace(/<[^>]+>/g,'')}</div>
@@ -2026,12 +2378,14 @@ function renderTodayTasks(){
     h += `<div class="ivy-section-title">NEXT</div><div class="ivy-list">`;
     next.forEach((it, index) => {
       const rank = index + 2;
-      h += `<div class="ivy-item ${it._unsaved ? 'unsaved' : ''}">
+      h += `<div class="ivy-item ${it._unsaved ? 'unsaved' : ''}" data-plan-drop="${it.id}" data-plan-date="${today()}">
         <span class="ivy-rank">${rank}</span>
+        <span class="ivy-drag" draggable="true" data-plan-drag="${it.id}" data-plan-date="${today()}" title="ドラッグして並び替え" aria-hidden="true">⋮⋮</span>
         <div class="ivy-copy tbody" data-id="${it.id}" role="button" tabindex="0">
           <div class="ivy-title">${catDot(it)}${esc(it.title)}</div>
           <div class="ivy-meta">${taskMeta(it)}</div>
         </div>
+        <button class="ivy-focus-btn" data-ivy-now="${it.id}">今やる</button>
         <div class="ivy-order" aria-label="優先順位">
           <button data-ivy-move="up" data-id="${it.id}" aria-label="優先順位を上げる">↑</button>
           <button data-ivy-move="down" data-id="${it.id}" aria-label="優先順位を下げる" ${rank === picked.length ? 'disabled' : ''}>↓</button>
@@ -2042,7 +2396,8 @@ function renderTodayTasks(){
     h += `</div>`;
   }
 
-  h += `<button class="ivy-add-link" data-task-tab="all">＋ 今日の6件に追加する</button></div>`;
+  h += `<button class="ivy-add-link" data-task-tab="all">＋ 今日の6件に追加する</button>
+    ${renderTomorrowPlanPrompt()}</div>`;
   return h;
 }
 
@@ -2351,6 +2706,10 @@ function initClicks(){
     if(chk){ toggleDone(chk.dataset.toggle); return; }
     const move = e.target.closest('[data-ivy-move]');
     if(move){ moveTodayTask(move.dataset.id, move.dataset.ivyMove); return; }
+    const focus = e.target.closest('[data-ivy-now]');
+    if(focus){ makeNow(focus.dataset.ivyNow); return; }
+    const tomorrow = e.target.closest('[data-open-tomorrow]');
+    if(tomorrow){ openTomorrowPlanner(); return; }
     const pick = e.target.closest('[data-today]');
     if(pick){ togglePick(pick.dataset.today); return; }
     const edit = e.target.closest('.ivy-edit');
@@ -2379,6 +2738,42 @@ function initClicks(){
   grid.addEventListener('keydown', e => {
     if((e.key === 'Enter' || e.key === ' ') && e.target.matches('[role="button"]')){ e.preventDefault(); e.target.click(); }
   });
+
+  bindIvyDrag(grid);
+
+  ivyPlanBody.addEventListener('click', e => {
+    const create = e.target.closest('[data-plan-create]');
+    if(create){
+      editorReturnPlanDate = tomorrowStr();
+      ivyPlanDlg.close();
+      openSheet(null, editorReturnPlanDate);
+      setKind('task');
+      return;
+    }
+    const add = e.target.closest('[data-plan-add]');
+    if(add){
+      if(addToPlan(add.dataset.planAdd, tomorrowStr())){ renderTomorrowPlanner(); render(); }
+      return;
+    }
+    const remove = e.target.closest('[data-plan-remove]');
+    if(remove){
+      removeFromPlan(remove.dataset.planRemove, tomorrowStr(), {quiet:true});
+      renderTomorrowPlanner(); render(); return;
+    }
+    const move = e.target.closest('[data-plan-move]');
+    if(move){
+      movePlanTask(move.dataset.id, move.dataset.planMove, tomorrowStr());
+      renderTomorrowPlanner(); return;
+    }
+  });
+  document.getElementById('ivyPlanClose').addEventListener('click', () => ivyPlanDlg.close());
+  document.getElementById('ivyPlanDone').addEventListener('click', () => ivyPlanDlg.close());
+
+  document.getElementById('carryClose').addEventListener('click', () => carryDlg.close());
+  document.getElementById('carrySkip').addEventListener('click', async () => {
+    await markCarrySeen(); carryDlg.close();
+  });
+  document.getElementById('carryApply').addEventListener('click', applyCarryover);
 }
 
 function openCalendar(){
@@ -2389,7 +2784,7 @@ function openCalendar(){
 function openToday(){
   state.screen = 'calendar'; state.view = 'day'; state.cursor = new Date(); render(); window.scrollTo({top:0,behavior:'auto'});
 }
-function openTasksScreen(){ state.screen = 'task'; render(); window.scrollTo({top:0,behavior:'auto'}); }
+function openTasksScreen(){ state.screen = 'task'; render(); window.scrollTo({top:0,behavior:'auto'}); setTimeout(maybeShowCarryover, 0); }
 function openSettings(){ state.screen = 'settings'; render(); window.scrollTo({top:0,behavior:'auto'}); }
 function tapFeedback(ms=10){ try{ if(narrowScreen() && navigator.vibrate) navigator.vibrate(ms); }catch(e){} }
 function showToast(msg){
@@ -2403,12 +2798,16 @@ function toggleDone(id){
   if(!it) return;
 
   const apply = () => {
-    const wasPicked = isPicked(it);
+    const planDates = Object.keys(ensureIvyPlan(it));
     it.done = !it.done;
-    if(it.done){ it.today = ''; it.todayRank = 0; }
-    render();
+    if(it.done){
+      it.today = '';
+      it.todayRank = 0;
+      it.ivyPlan = {};
+    }
     persist(it);
-    if(wasPicked && it.done) normalizeTodayRanks(true);
+    if(it.done) planDates.forEach(ds => normalizePlanRanks(ds, true));
+    render();
   };
 
   // 完了にするときだけ、チェックが入るのを見せてから消す。
@@ -2422,38 +2821,281 @@ function toggleDone(id){
   }
 }
 
+function planDayLabel(dateStr){
+  if(dateStr === today()) return '今日';
+  if(dateStr === tomorrowStr()) return '明日';
+  const d = parse(dateStr);
+  return `${d.getMonth()+1}/${d.getDate()}`;
+}
+
+function addToPlan(id, dateStr, {quiet=false} = {}){
+  const it = items.find(i => i.id === id);
+  if(!it || it.done || isPickedFor(it,dateStr)) return false;
+
+  const current = normalizePlanRanks(dateStr, false);
+  if(current.length >= 6){
+    const ok = confirm(
+      `${planDayLabel(dateStr)}の計画はすでに${current.length}件あります。
+
+` +
+      'アイビーメソッドでは6件までに絞るのがおすすめです。\n' +
+      'それでも追加しますか？'
+    );
+    if(!ok) return false;
+  }
+
+  setPlanRank(it, dateStr, current.length + 1);
+  persist(it);
+  if(!quiet) showToast(`${planDayLabel(dateStr)}の${current.length + 1}番に追加しました`);
+  return true;
+}
+
+function removeFromPlan(id, dateStr, {quiet=false} = {}){
+  const it = items.find(i => i.id === id);
+  if(!it || !isPickedFor(it,dateStr)) return false;
+  setPlanRank(it, dateStr, 0);
+  persist(it);
+  normalizePlanRanks(dateStr, true);
+  if(!quiet) showToast(`${planDayLabel(dateStr)}の計画から外しました`);
+  return true;
+}
+
 function togglePick(id){
   const it = items.find(i => i.id === id);
   if(!it || it.done) return;
-
-  if(isPicked(it)){
-    it.today = '';
-    it.todayRank = 0;
-    persist(it);
-    normalizeTodayRanks(true);
-    showToast('今日の6件から外しました');
-  }else{
-    const current = normalizeTodayRanks(false);
-    it.today = today();
-    it.todayRank = current.length + 1;
-    persist(it);
-    showToast(`今日の${it.todayRank}番に追加しました`);
-  }
+  if(isPicked(it)) removeFromPlan(id, today());
+  else addToPlan(id, today());
   render();
 }
 
-function moveTodayTask(id, direction){
-  const list = normalizeTodayRanks(false);
+function applyPlanOrder(dateStr, ordered){
+  ordered.forEach((it, index) => {
+    setPlanRank(it, dateStr, index + 1);
+    persist(it);
+  });
+}
+
+function movePlanTask(id, direction, dateStr = today()){
+  const list = normalizePlanRanks(dateStr, false);
   const index = list.findIndex(it => it.id === id);
   if(index < 0) return;
   const to = direction === 'up' ? index - 1 : index + 1;
   if(to < 0 || to >= list.length) return;
-  const a = list[index], b = list[to];
-  const rank = a.todayRank;
-  a.todayRank = b.todayRank;
-  b.todayRank = rank;
-  persist(a); persist(b);
+
+  // 2番以降を1番へ上げるときだけ確認する。
+  if(to === 0 && index > 0){
+    const current = list[0];
+    const target = list[index];
+    const ok = confirm(
+      `まだ「${current.title}」がNOWに残っています。
+
+` +
+      `集中するタスクを「${target.title}」へ変更しますか？`
+    );
+    if(!ok) return;
+  }
+
+  [list[index], list[to]] = [list[to], list[index]];
+  applyPlanOrder(dateStr, list);
   render();
+  if(document.getElementById('ivyPlanDlg')?.open) renderTomorrowPlanner();
+}
+
+function moveTodayTask(id, direction){
+  movePlanTask(id, direction, today());
+}
+
+function makeNow(id){
+  const list = normalizeTodayRanks(false);
+  const index = list.findIndex(it => it.id === id);
+  if(index <= 0) return;
+
+  const current = list[0];
+  const target = list[index];
+  const ok = confirm(
+    `まだ「${current.title}」がNOWに残っています。
+
+` +
+    `集中するタスクを「${target.title}」へ変更しますか？`
+  );
+  if(!ok) return;
+
+  list.splice(index, 1);
+  list.unshift(target);
+  applyPlanOrder(today(), list);
+  render();
+  showToast(`NOWを「${target.title}」に変更しました`);
+}
+
+/* PCではドラッグでも並び替えられる。iPhoneなどでは↑↓を残す。 */
+let ivyDrag = null;
+function bindIvyDrag(grid){
+  grid.addEventListener('dragstart', e => {
+    const handle = e.target.closest('[data-plan-drag]');
+    if(!handle) return;
+    ivyDrag = { id:handle.dataset.planDrag, date:handle.dataset.planDate || today() };
+    handle.closest('[data-plan-drop]')?.classList.add('is-dragging');
+    if(e.dataTransfer){
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', ivyDrag.id);
+    }
+  });
+
+  grid.addEventListener('dragover', e => {
+    if(!ivyDrag) return;
+    const target = e.target.closest('[data-plan-drop]');
+    if(!target || target.dataset.planDate !== ivyDrag.date) return;
+    e.preventDefault();
+    grid.querySelectorAll('.drag-over').forEach(x => { if(x !== target) x.classList.remove('drag-over'); });
+    target.classList.add('drag-over');
+  });
+
+  grid.addEventListener('drop', e => {
+    if(!ivyDrag) return;
+    const target = e.target.closest('[data-plan-drop]');
+    if(!target || target.dataset.planDate !== ivyDrag.date) return;
+    e.preventDefault();
+
+    const list = normalizePlanRanks(ivyDrag.date, false);
+    const from = list.findIndex(it => it.id === ivyDrag.id);
+    const to = list.findIndex(it => it.id === target.dataset.planDrop);
+    if(from < 0 || to < 0 || from === to) return;
+
+    const next = [...list];
+    const [moved] = next.splice(from,1);
+    next.splice(to,0,moved);
+
+    if(next[0]?.id !== list[0]?.id){
+      const ok = confirm(
+        `NOWを「${next[0].title}」へ変更しますか？
+
+` +
+        `現在のNOWは「${list[0].title}」です。`
+      );
+      if(!ok) return;
+    }
+
+    applyPlanOrder(ivyDrag.date, next);
+    render();
+  });
+
+  grid.addEventListener('dragend', () => {
+    ivyDrag = null;
+    grid.querySelectorAll('.drag-over,.is-dragging').forEach(x => x.classList.remove('drag-over','is-dragging'));
+  });
+}
+
+/* ---------- 明日の6件 ---------- */
+const ivyPlanDlg = document.getElementById('ivyPlanDlg');
+const ivyPlanBody = document.getElementById('ivyPlanBody');
+
+function renderTomorrowPlanner(){
+  const dateStr = tomorrowStr();
+  const selected = normalizePlanRanks(dateStr, false);
+  const selectedIds = new Set(selected.map(it => it.id));
+  const candidates = openTasks().filter(it => !selectedIds.has(it.id));
+  const over = selected.length > 6;
+
+  let h = `<div class="ivy-plan-summary"><b>${planDayLabel(dateStr)}の計画</b><span class="${over ? 'ivy-meter over' : ''}">${selected.length} / 6</span></div>
+    <button class="ivy-plan-create" data-plan-create>＋ 明日のタスクを作る</button>`;
+
+  if(selected.length){
+    h += '<div class="ivy-plan-list">';
+    selected.forEach((it, index) => {
+      h += `<div class="ivy-plan-row">
+        <span class="rank">${index+1}</span>
+        <span class="copy"><b>${catDot(it)}${esc(it.title)}</b><small>${dateText(it)}</small></span>
+        <span class="mini-actions">
+          <button data-plan-move="up" data-id="${it.id}" ${index===0?'disabled':''} aria-label="上へ">↑</button>
+          <button data-plan-move="down" data-id="${it.id}" ${index===selected.length-1?'disabled':''} aria-label="下へ">↓</button>
+          <button data-plan-remove="${it.id}" aria-label="明日の計画から外す">×</button>
+        </span>
+      </div>`;
+    });
+    h += '</div>';
+  }else{
+    h += '<p class="tempty">明日のタスクはまだ選ばれていません。</p>';
+  }
+
+  h += `<p class="ivy-plan-section-title">候補</p>`;
+  if(candidates.length){
+    h += '<div class="ivy-candidate-list">';
+    candidates.forEach(it => {
+      h += `<div class="ivy-plan-row">
+        <span class="copy"><b>${catDot(it)}${esc(it.title)}</b><small>${dateText(it)} ・ ${dueLabel(diffDays(it.date,today()),false).replace(/<[^>]+>/g,'')}</small></span>
+        <button class="add-plan" data-plan-add="${it.id}">明日に追加</button>
+      </div>`;
+    });
+    h += '</div>';
+  }else{
+    h += '<p class="tempty">追加できる未完了タスクはありません。</p>';
+  }
+
+  ivyPlanBody.innerHTML = h;
+  document.getElementById('ivyPlanHint').textContent = over
+    ? '6件を超えています。明日の優先順位を見直すのがおすすめです。'
+    : '明日やる重要なことを最大6件を目安に選び、上から順に進めます。';
+}
+
+function openTomorrowPlanner(){
+  renderTomorrowPlanner();
+  if(!ivyPlanDlg.open) ivyPlanDlg.showModal();
+}
+
+/* ---------- 昨日の未完了 ---------- */
+const carryDlg = document.getElementById('carryDlg');
+const carryBody = document.getElementById('carryBody');
+
+function carryCandidates(){
+  return normalizePlanRanks(yesterdayStr(), false)
+    .filter(it => !it.done && !isPickedFor(it, today()));
+}
+
+async function markCarrySeen(){
+  prefs.ivyCarrySeen = today();
+  await savePrefs();
+}
+
+function maybeShowCarryover(){
+  if(prefs.ivyCarrySeen === today() || carryDlg.open) return;
+  const list = carryCandidates();
+  if(!list.length) return;
+
+  const room = Math.max(0, 6 - normalizeTodayRanks(false).length);
+  carryBody.innerHTML = `<div class="carry-list">${list.map((it,index) => `
+    <label class="carry-row">
+      <input type="checkbox" value="${it.id}" ${index < room ? 'checked' : ''}>
+      <span><b>${index+1}. ${catDot(it)}${esc(it.title)}</b><small>${dateText(it)}</small></span>
+    </label>`).join('')}</div>`;
+
+  carryDlg.showModal();
+}
+
+async function applyCarryover(){
+  const ids = [...carryBody.querySelectorAll('input[type="checkbox"]:checked')].map(el => el.value);
+  const current = normalizeTodayRanks(false);
+  if(ids.length && current.length + ids.length > 6){
+    const ok = confirm(
+      `引き継ぐと今日の計画が ${current.length + ids.length} 件になります。
+
+` +
+      '6件までに絞るのがおすすめですが、このまま引き継ぎますか？'
+    );
+    if(!ok) return;
+  }
+
+  let rank = current.length + 1;
+  for(const id of ids){
+    const it = items.find(x => x.id === id);
+    if(!it || it.done || isPickedFor(it,today())) continue;
+    setPlanRank(it, today(), rank++);
+    persist(it);
+  }
+  normalizeTodayRanks(true);
+  await markCarrySeen();
+  carryDlg.close();
+  render();
+  if(ids.length) showToast(`${ids.length}件を今日へ引き継ぎました`);
 }
 
 /* ==========================================================
@@ -2493,6 +3135,8 @@ function persist(it){
    ========================================================== */
 const dlg = document.getElementById('dlg');
 let editing = null;
+// 明日の6件画面から新規タスクを作ったとき、保存/キャンセル後に計画画面へ戻す。
+let editorReturnPlanDate = '';
 let kind = 'event';
 let formDirty = false;
 
@@ -2567,7 +3211,15 @@ function applyPrefs(){
   DAY_START = Number(prefs.dayStart) || 0;
   DAY_END   = Number(prefs.dayEnd)   || 24;
   if(Array.isArray(prefs.periods) && prefs.periods.length) PERIODS = prefs.periods;
+
+  if(!Number.isFinite(Number(prefs.eventReminderMinutes))) prefs.eventReminderMinutes = 10;
+  if(typeof prefs.taskSameDayNotify !== 'boolean') prefs.taskSameDayNotify = true;
+  if(!/^\d{2}:\d{2}$/.test(String(prefs.taskNotifyTime || ''))) prefs.taskNotifyTime = '09:00';
+  if(typeof prefs.taskPrevDayNotify !== 'boolean') prefs.taskPrevDayNotify = true;
+  if(!/^\d{2}:\d{2}$/.test(String(prefs.taskPrevNotifyTime || ''))) prefs.taskPrevNotifyTime = '20:00';
+
   buildPeriodPicks();
+  if(typeof refreshNotificationEngine === 'function') refreshNotificationEngine();
 }
 
 async function savePrefs(){
@@ -2588,6 +3240,7 @@ function drawSync(){
     onGoogle ? '接続を解除' : 'Googleカレンダーとつなぐ';
   document.getElementById('gresync').hidden = !onGoogle;
   const dot = document.getElementById('syncDot'); if(dot) dot.classList.toggle('on', onGoogle);
+  drawNotificationSettings();
 }
 let lastSync = '';
 
@@ -2663,8 +3316,15 @@ function prepareSettingsPage(){
   document.getElementById('fDayStart').value = prefs.dayStart;
   document.getElementById('fDayEnd').value = prefs.dayEnd;
   document.getElementById('catSummary').textContent = cats.map(c => c.name).join('・') || '（未設定）';
+
+  document.getElementById('fEventReminder').value = String(Number.isFinite(Number(prefs.eventReminderMinutes)) ? Number(prefs.eventReminderMinutes) : 10);
+  document.getElementById('fTaskSameNotify').checked = prefs.taskSameDayNotify !== false;
+  document.getElementById('fTaskNotifyTime').value = prefs.taskNotifyTime || '09:00';
+  document.getElementById('fTaskPrevNotify').checked = prefs.taskPrevDayNotify !== false;
+  document.getElementById('fTaskPrevNotifyTime').value = prefs.taskPrevNotifyTime || '20:00';
+
   validPeriodSnapshot = PERIODS.map(p => ({...p}));
-  buildPeriodEdit(); drawSync();
+  buildPeriodEdit(); drawSync(); drawNotificationSettings();
   document.querySelectorAll('[data-theme-choice]').forEach(b => b.setAttribute('aria-pressed', b.dataset.themeChoice === prefs.theme));
 }
 document.getElementById('setOpen').addEventListener('click', openSettings);
@@ -2975,6 +3635,12 @@ dlg.addEventListener('cancel', e => {
   if(formDirty && !confirm('入力中の変更を破棄しますか？')) e.preventDefault();
   else formDirty = false;
 });
+dlg.addEventListener('close', () => {
+  if(!editorReturnPlanDate) return;
+  const returnDate = editorReturnPlanDate;
+  editorReturnPlanDate = '';
+  if(returnDate === tomorrowStr()) setTimeout(openTomorrowPlanner, 0);
+});
 
 document.getElementById('save').addEventListener('click', async () => {
   const title = document.getElementById('fTitle').value.trim();
@@ -3014,6 +3680,7 @@ document.getElementById('save').addEventListener('click', async () => {
       data.done  = editing?.done  || false;
       data.today = editing?.today || '';
       data.todayRank = editing?.todayRank || 0;
+      data.ivyPlan = editing?.ivyPlan ? { ...editing.ivyPlan } : {};
     }
   }
 
@@ -3024,6 +3691,20 @@ document.getElementById('save').addEventListener('click', async () => {
   }else{
     target = { id: uid(), ...data };
     items.push(target);
+
+    // 「明日の6件」画面から作ったタスクは、そのまま明日の計画へ追加する。
+    // すでに6件ある場合はPhase 2の方針どおり、禁止せず一度だけ確認する。
+    if(editorReturnPlanDate && kind === 'task'){
+      const current = normalizePlanRanks(editorReturnPlanDate, false);
+      let addToOriginPlan = true;
+      if(current.length >= 6){
+        addToOriginPlan = confirm(
+          `${planDayLabel(editorReturnPlanDate)}の計画はすでに${current.length}件あります。\n\n` +
+          '新しく作ったタスクも計画に追加しますか？'
+        );
+      }
+      if(addToOriginPlan) setPlanRank(target, editorReturnPlanDate, current.length + 1);
+    }
   }
 
   // 画面を先に更新して、書き込みは裏で走らせる。
@@ -3090,6 +3771,422 @@ document.getElementById('tabWeek').addEventListener('click', () => {
 });
 document.getElementById('tabMonth').addEventListener('click', () => { state.view='month'; render(); });
 
+
+/* ==========================================================
+   Phase 3 — 通知
+   ----------------------------------------------------------
+   ・ブラウザ/PWA自身の通知:
+       アプリが動いている間、30秒ごとに期限を確認して通知する。
+       バックグラウンド停止後に復帰した場合は、直近2分だけ取りこぼしを補う。
+   ・Googleカレンダー:
+       開始時刻のある予定/授業と、タスクの前日通知をremindersへ反映できる。
+   ========================================================== */
+const NOTIFY_LEDGER_KEY = 'schedule:notify-ledger:v1';
+let notificationTimer = null;
+let notificationLastCheck = Date.now();
+
+function isStandalonePwa(){
+  return window.matchMedia?.('(display-mode: standalone)').matches === true
+      || window.navigator.standalone === true;
+}
+function isIOS(){
+  return /iPhone|iPad|iPod/i.test(navigator.userAgent)
+      || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+function notificationSupported(){
+  return 'Notification' in window;
+}
+function notificationPermission(){
+  return notificationSupported() ? Notification.permission : 'unsupported';
+}
+
+function loadNotifyLedger(){
+  try{
+    const raw = localStorage.getItem(NOTIFY_LEDGER_KEY);
+    const x = raw ? JSON.parse(raw) : {};
+    return x && typeof x === 'object' && !Array.isArray(x) ? x : {};
+  }catch(e){ return {}; }
+}
+function saveNotifyLedger(ledger){
+  try{
+    const cutoff = Date.now() - 21 * 86400000;
+    for(const [k,v] of Object.entries(ledger)){
+      if(Number(v) < cutoff) delete ledger[k];
+    }
+    localStorage.setItem(NOTIFY_LEDGER_KEY, JSON.stringify(ledger));
+  }catch(e){}
+}
+function wasNotified(key){
+  return Boolean(loadNotifyLedger()[key]);
+}
+function markNotified(key){
+  const ledger = loadNotifyLedger();
+  ledger[key] = Date.now();
+  saveNotifyLedger(ledger);
+}
+
+function localDateTime(dateStr, hhmm){
+  const [y,mo,d] = dateStr.split('-').map(Number);
+  const [h,m] = String(hhmm || '00:00').split(':').map(Number);
+  return new Date(y, mo - 1, d, h || 0, m || 0, 0, 0);
+}
+
+function notificationCandidates(now = new Date()){
+  const out = [];
+  if(!prefs.notifyEnabled) return out;
+
+  // 通知の前後を含む数日だけ作る。毎週授業もこの範囲の曜日から発生させる。
+  const dateBase = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const dates = [-1,0,1,2].map(n => fmt(addDays(dateBase,n)));
+
+  const lead = Number(prefs.eventReminderMinutes);
+  if(Number.isFinite(lead) && lead >= 0){
+    for(const it of items){
+      if(it.kind === 'task' || !it.start) continue;
+
+      if(it.kind === 'class'){
+        for(const ds of dates){
+          const d = parse(ds);
+          if(d.getDay() !== Number(it.weekday)) continue;
+          if(it.termEnd && ds > it.termEnd) continue;
+          const startAt = localDateTime(ds, it.start);
+          const when = new Date(startAt.getTime() - lead * 60000);
+          out.push({
+            key:`event:${it.id}:${ds}:${lead}`,
+            when:when.getTime(),
+            title:it.title,
+            body:lead === 0 ? `${it.start} 開始` : `${it.start}から・${lead}分前`,
+            kind:'event',
+            date:ds,
+            itemId:it.id
+          });
+        }
+        continue;
+      }
+
+      // 通常の予定は開始日に1回だけ通知する。
+      const startAt = localDateTime(it.date, it.start);
+      const when = new Date(startAt.getTime() - lead * 60000);
+      out.push({
+        key:`event:${it.id}:${it.date}:${lead}`,
+        when:when.getTime(),
+        title:it.title,
+        body:lead === 0 ? `${it.start} 開始` : `${it.start}から・${lead}分前`,
+        kind:'event',
+        date:it.date,
+        itemId:it.id
+      });
+    }
+  }
+
+  for(const it of openTasks()){
+    if(prefs.taskSameDayNotify){
+      const t = prefs.taskNotifyTime || '09:00';
+      out.push({
+        key:`task:${it.id}:same:${it.date}:${t}`,
+        when:localDateTime(it.date,t).getTime(),
+        title:it.title,
+        body:it.start ? `今日が期限です（${it.start}まで）` : '今日が期限です',
+        kind:'task',
+        date:it.date,
+        itemId:it.id
+      });
+    }
+    if(prefs.taskPrevDayNotify){
+      const t = prefs.taskPrevNotifyTime || '20:00';
+      const prev = fmt(addDays(parse(it.date), -1));
+      out.push({
+        key:`task:${it.id}:prev:${it.date}:${t}`,
+        when:localDateTime(prev,t).getTime(),
+        title:it.title,
+        body:it.start ? `明日が期限です（${it.start}まで）` : '明日が期限です',
+        kind:'task',
+        date:it.date,
+        itemId:it.id
+      });
+    }
+  }
+  return out;
+}
+
+async function showScheduleNotification(info){
+  if(notificationPermission() !== 'granted') return false;
+  const options = {
+    body: info.body || '',
+    icon: './icon-192.png',
+    badge: './icon-192.png',
+    tag: 'schedule-' + (info.key || Date.now()),
+    renotify: false,
+    data: {
+      kind: info.kind || '',
+      date: info.date || '',
+      itemId: info.itemId || ''
+    }
+  };
+
+  try{
+    if('serviceWorker' in navigator){
+      const reg = await navigator.serviceWorker.ready;
+      await reg.showNotification(info.title || 'schedule', options);
+    }else{
+      new Notification(info.title || 'schedule', options);
+    }
+    return true;
+  }catch(err){
+    console.warn('schedule notification failed:', err);
+    return false;
+  }
+}
+
+async function checkNotifications(){
+  const now = Date.now();
+  if(!prefs.notifyEnabled || notificationPermission() !== 'granted'){
+    notificationLastCheck = now;
+    return;
+  }
+
+  // タイマー停止から復帰した場合も、2分より古い通知はまとめて鳴らさない。
+  const from = Math.max(notificationLastCheck, now - 120000);
+  notificationLastCheck = now;
+
+  for(const n of notificationCandidates(new Date(now))){
+    if(n.when <= from || n.when > now || wasNotified(n.key)) continue;
+    if(await showScheduleNotification(n)) markNotified(n.key);
+  }
+}
+
+function refreshNotificationEngine(){
+  if(notificationTimer){
+    clearInterval(notificationTimer);
+    notificationTimer = null;
+  }
+  notificationLastCheck = Date.now();
+
+  if(prefs.notifyEnabled && notificationPermission() === 'granted'){
+    notificationTimer = setInterval(checkNotifications, 30000);
+  }
+  drawNotificationSettings();
+}
+
+function drawNotificationSettings(){
+  const stateEl = document.getElementById('notifyState');
+  const dot = document.getElementById('notifyDot');
+  const enable = document.getElementById('notifyEnable');
+  const test = document.getElementById('notifyTest');
+  if(!stateEl || !dot || !enable || !test) return;
+
+  const perm = notificationPermission();
+  const iOSNeedsInstall = isIOS() && !isStandalonePwa();
+
+  dot.classList.remove('on');
+  enable.disabled = false;
+  test.hidden = true;
+
+  if(perm === 'unsupported'){
+    stateEl.textContent = 'このブラウザでは通知を利用できません';
+    enable.textContent = '利用できません';
+    enable.disabled = true;
+  }else if(iOSNeedsInstall && perm !== 'granted'){
+    stateEl.textContent = 'ホーム画面のアプリから有効にできます';
+    enable.textContent = 'ホーム画面から起動して設定';
+    enable.disabled = true;
+  }else if(perm === 'denied'){
+    stateEl.textContent = '通知がブロックされています';
+    enable.textContent = '端末の通知設定で許可してください';
+    enable.disabled = true;
+  }else if(perm === 'granted' && prefs.notifyEnabled){
+    stateEl.textContent = '通知は有効です';
+    dot.classList.add('on');
+    enable.textContent = '通知を停止';
+    test.hidden = false;
+  }else if(perm === 'granted'){
+    stateEl.textContent = '通知の許可はあります（現在は停止中）';
+    enable.textContent = '通知を有効にする';
+  }else{
+    stateEl.textContent = 'まだ通知を許可していません';
+    enable.textContent = '通知を有効にする';
+  }
+
+  const sameField = document.getElementById('taskSameTimeField');
+  const prevField = document.getElementById('taskPrevTimeField');
+  if(sameField) sameField.hidden = !document.getElementById('fTaskSameNotify')?.checked;
+  if(prevField) prevField.hidden = !document.getElementById('fTaskPrevNotify')?.checked;
+
+  const googleApply = document.getElementById('notifyGoogleApply');
+  const googleHint = document.getElementById('notifyGoogleHint');
+  if(googleApply) googleApply.hidden = Backend.name !== 'google';
+  if(googleHint){
+    googleHint.textContent = Backend.name === 'google'
+      ? '設定を変えたら「Googleへ反映」で既存の予定にも適用できます。'
+      : 'Googleカレンダーとつなぐと、予定・授業とタスク前日の通知をGoogle側にも設定できます。';
+  }
+}
+
+async function requestScheduleNotifications(){
+  if(!notificationSupported()) return;
+
+  // iOSではホーム画面Webアプリから、利用者の操作を起点に許可を求める必要がある。
+  if(isIOS() && !isStandalonePwa()){
+    showToast('iPhoneではホーム画面に追加したscheduleから通知を有効にしてください');
+    drawNotificationSettings();
+    return;
+  }
+
+  let perm = notificationPermission();
+  if(perm === 'default'){
+    try{ perm = await Notification.requestPermission(); }
+    catch(err){ perm = notificationPermission(); }
+  }
+
+  if(perm === 'granted'){
+    prefs.notifyEnabled = true;
+    await savePrefs();
+    refreshNotificationEngine();
+    showToast('通知を有効にしました');
+  }else{
+    drawNotificationSettings();
+  }
+}
+
+async function toggleScheduleNotifications(){
+  if(notificationPermission() !== 'granted'){
+    await requestScheduleNotifications();
+    return;
+  }
+  prefs.notifyEnabled = !prefs.notifyEnabled;
+  await savePrefs();
+  refreshNotificationEngine();
+  showToast(prefs.notifyEnabled ? '通知を有効にしました' : '通知を停止しました');
+}
+
+async function syncNotificationPrefsToGoogle(){
+  if(Backend.name !== 'google'){
+    showToast('Googleカレンダーに接続してから利用できます');
+    return;
+  }
+
+  const targets = items.filter(it =>
+    (it.kind === 'class')
+    || (it.kind === 'event' && it.start)
+    || it.kind === 'task'
+  );
+
+  if(!targets.length){
+    showToast('反映する予定がありません');
+    return;
+  }
+
+  const button = document.getElementById('notifyGoogleApply');
+  if(button){ button.disabled = true; button.textContent = '反映中…'; }
+  beginWrite();
+
+  let ok = 0;
+  forceGoogleReminderSync = true;
+  try{
+    for(const it of targets){
+      await Backend.upsert(it);
+      ok++;
+    }
+    lastSync = new Date().toTimeString().slice(0,5);
+    drawSync();
+    showToast(`${ok}件に通知設定を反映しました`);
+  }catch(err){
+    showWarn('<strong>通知設定をGoogleへ反映できなかった。</strong><br><span class="warn-detail">' + esc(err.message) + '</span>');
+  }finally{
+    forceGoogleReminderSync = false;
+    endWrite();
+    if(button){ button.disabled = false; button.textContent = 'Googleへ反映'; }
+  }
+}
+
+let notificationDeepLinkHandled = false;
+
+function handleNotificationUrl(){
+  if(notificationDeepLinkHandled) return;
+  notificationDeepLinkHandled = true;
+
+  try{
+    const url = new URL(location.href);
+    const kind = url.searchParams.get('notifyKind');
+    const date = url.searchParams.get('notifyDate') || '';
+    const itemId = url.searchParams.get('notifyItem') || '';
+    if(!kind) return;
+
+    openNotificationTarget({ kind, date, itemId });
+
+    url.searchParams.delete('notifyKind');
+    url.searchParams.delete('notifyDate');
+    url.searchParams.delete('notifyItem');
+    history.replaceState(null, '', url.pathname + (url.search ? url.search : '') + url.hash);
+  }catch(e){}
+}
+
+function openNotificationTarget(data){
+  if(!data) return;
+  if(data.kind === 'task'){
+    state.screen = 'task';
+    taskTab = 'today';
+    render();
+    window.scrollTo({top:0,behavior:'auto'});
+    return;
+  }
+  if(data.kind === 'event' && data.date){
+    state.screen = 'calendar';
+    state.cursor = parse(data.date);
+    state.view = narrowScreen() ? 'day' : 'week';
+    render();
+    window.scrollTo({top:0,behavior:'auto'});
+  }
+}
+
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.addEventListener('message', e => {
+    if(e.data?.type === 'SCHEDULE_NOTIFICATION_CLICK'){
+      openNotificationTarget(e.data);
+    }
+  });
+}
+
+document.addEventListener('visibilitychange', () => {
+  if(document.visibilityState === 'visible') checkNotifications();
+});
+window.addEventListener('focus', checkNotifications);
+
+document.getElementById('notifyEnable').addEventListener('click', toggleScheduleNotifications);
+document.getElementById('notifyTest').addEventListener('click', async () => {
+  if(await showScheduleNotification({
+    key:'test-' + Date.now(),
+    title:'schedule',
+    body:'通知のテストです。設定は正常に動いています。',
+    kind:'test'
+  })){
+    showToast('テスト通知を送りました');
+  }
+});
+document.getElementById('notifyGoogleApply').addEventListener('click', syncNotificationPrefsToGoogle);
+
+document.getElementById('fEventReminder').addEventListener('change', async e => {
+  prefs.eventReminderMinutes = Number(e.target.value);
+  await savePrefs(); refreshNotificationEngine();
+});
+document.getElementById('fTaskSameNotify').addEventListener('change', async e => {
+  prefs.taskSameDayNotify = e.target.checked;
+  await savePrefs(); refreshNotificationEngine();
+});
+document.getElementById('fTaskNotifyTime').addEventListener('change', async e => {
+  prefs.taskNotifyTime = e.target.value || '09:00';
+  await savePrefs(); refreshNotificationEngine();
+});
+document.getElementById('fTaskPrevNotify').addEventListener('change', async e => {
+  prefs.taskPrevDayNotify = e.target.checked;
+  await savePrefs(); refreshNotificationEngine();
+});
+document.getElementById('fTaskPrevNotifyTime').addEventListener('change', async e => {
+  prefs.taskPrevNotifyTime = e.target.value || '20:00';
+  await savePrefs(); refreshNotificationEngine();
+});
+
+
 /* ==========================================================
    8. データの持ち出し／持ち込み
    （別のPC・別の環境に移すときや、バックアップ用）
@@ -3153,11 +4250,25 @@ function migrate(list){
     // 締切(due) はタスク(task) に統合された。古いデータを読むための変換なので消さないこと
     if(it.kind === 'due'){
       changed = true;
-      return { ...it, kind:'task', done: it.done === true, todayRank:Number(it.todayRank)||0 };
+      const next = { ...it, kind:'task', done: it.done === true, todayRank:Number(it.todayRank)||0, ivyPlan:{} };
+      if(next.today) next.ivyPlan[next.today] = Number(next.todayRank) || 9999;
+      return next;
     }
-    if(it.kind === 'task' && !Number.isFinite(Number(it.todayRank))){
-      changed = true;
-      return { ...it, todayRank:0 };
+    if(it.kind === 'task'){
+      const next = { ...it };
+      let touched = false;
+      if(!Number.isFinite(Number(next.todayRank))){ next.todayRank = 0; touched = true; }
+      if(!next.ivyPlan || typeof next.ivyPlan !== 'object' || Array.isArray(next.ivyPlan)){
+        next.ivyPlan = {}; touched = true;
+      }else{
+        next.ivyPlan = { ...next.ivyPlan };
+      }
+      if(next.today && !Number(next.ivyPlan[next.today])){
+        next.ivyPlan[next.today] = Number(next.todayRank) || 9999;
+        touched = true;
+      }
+      if(touched) changed = true;
+      return next;
     }
     return it;
   });
@@ -3191,6 +4302,8 @@ async function useBackend(be){
     setLoading(false);
   }
   render();
+  refreshNotificationEngine();
+  handleNotificationUrl();
 }
 
 document.getElementById('gsync').addEventListener('click', async () => {
@@ -3251,10 +4364,10 @@ document.getElementById('gsync').addEventListener('click', async () => {
        weekday:3, start:'09:00', end:'10:30', termEnd:null, cat:'class'},
       {id:uid(), kind:'task',  title:'レポートを出す', memo:'PDFで提出',
        date:fmt(addDays(t,3)), endDate:fmt(addDays(t,3)), start:'23:59', end:'',
-       done:false, today:fmt(t), cat:'class'},
+       done:false, today:fmt(t), todayRank:1, ivyPlan:{[fmt(t)]:1}, cat:'class'},
       {id:uid(), kind:'task',  title:'教科書を買う', memo:'',
        date:fmt(addDays(t,6)), endDate:fmt(addDays(t,6)), start:'', end:'',
-       done:false, today:'', cat:'private'},
+       done:false, today:'', todayRank:0, ivyPlan:{}, cat:'private'},
       {id:uid(), kind:'event', title:'バイト', memo:'',
        date:fmt(addDays(t,1)), endDate:fmt(addDays(t,1)), start:'17:00', end:'21:00', cat:'baito'},
       {id:uid(), kind:'event', title:'合宿', memo:'日をまたぐ予定はこう出るよ',
@@ -3273,7 +4386,7 @@ document.getElementById('gsync').addEventListener('click', async () => {
    Google Calendar / OAuthの通信処理とは独立して動作する。
    ========================================================== */
 (() => {
-  const APP_VERSION = "1.1.1";
+  const APP_VERSION = "1.3.0";
   const INSTALL_DISMISSED_KEY = "schedule:pwa-install-dismissed";
   let deferredInstallPrompt = null;
   let swRegistration = null;
@@ -3377,6 +4490,7 @@ document.getElementById('gsync').addEventListener('click', async () => {
     try{
       swRegistration = await navigator.serviceWorker.register("./sw.js");
       console.log("Service Worker registered:", swRegistration.scope);
+      if(typeof refreshNotificationEngine === "function") refreshNotificationEngine();
 
       if(swRegistration.waiting){
         showUpdateReady(swRegistration.waiting);
@@ -3414,6 +4528,7 @@ document.getElementById('gsync').addEventListener('click', async () => {
     deferredInstallPrompt = null;
     if(promptEl) promptEl.hidden = true;
     updateInstallState();
+    if(typeof drawNotificationSettings === "function") drawNotificationSettings();
     showPwaToast("scheduleをインストールしました。");
   });
 

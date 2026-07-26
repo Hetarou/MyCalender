@@ -3,7 +3,7 @@
  * Google Calendar / OAuthなど外部オリジンの通信には介入しない。
  */
 
-const CACHE_VERSION = "v1.1.1";
+const CACHE_VERSION = "v1.3.0";
 const STATIC_CACHE = `schedule-static-${CACHE_VERSION}`;
 const PAGE_CACHE = `schedule-pages-${CACHE_VERSION}`;
 
@@ -138,3 +138,59 @@ self.addEventListener("message", event => {
     self.skipWaiting();
   }
 });
+
+/* ---------- 通知 ---------- */
+self.addEventListener("notificationclick", event => {
+  event.notification.close();
+  const data = event.notification.data || {};
+
+  event.waitUntil((async () => {
+    const windows = await self.clients.matchAll({
+      type: "window",
+      includeUncontrolled: true
+    });
+
+    for(const client of windows){
+      if("focus" in client){
+        await client.focus();
+        client.postMessage({
+          type: "SCHEDULE_NOTIFICATION_CLICK",
+          kind: data.kind || "",
+          date: data.date || "",
+          itemId: data.itemId || ""
+        });
+        return;
+      }
+    }
+
+    if(self.clients.openWindow){
+      const q = new URLSearchParams({
+        notifyKind: data.kind || "",
+        notifyDate: data.date || "",
+        notifyItem: data.itemId || ""
+      });
+      await self.clients.openWindow("./?" + q.toString());
+    }
+  })());
+});
+
+/* 将来Web Pushの送信側を追加したとき、そのまま受けられる受け口。
+   現在のv1.3.0ではPush購読/送信サーバーは持たず、
+   PWA起動中の通知 + Google Calendar remindersを利用する。 */
+self.addEventListener("push", event => {
+  if(!event.data) return;
+  let payload = {};
+  try{ payload = event.data.json(); }
+  catch(e){ payload = { title:"schedule", body:event.data.text() }; }
+
+  event.waitUntil(
+    self.registration.showNotification(payload.title || "schedule", {
+      body: payload.body || "",
+      icon: "./icon-192.png",
+      badge: "./icon-192.png",
+      tag: payload.tag || ("schedule-push-" + Date.now()),
+      data: payload.data || {}
+    })
+  );
+});
+
