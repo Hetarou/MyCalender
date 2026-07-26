@@ -3,7 +3,7 @@
  * Google Calendar / OAuthなど外部オリジンの通信には介入しない。
  */
 
-const CACHE_VERSION = "v1.4.0-a2";
+const CACHE_VERSION = "v1.4.0-a3";
 const STATIC_CACHE = `schedule-static-${CACHE_VERSION}`;
 const PAGE_CACHE = `schedule-pages-${CACHE_VERSION}`;
 
@@ -175,7 +175,7 @@ self.addEventListener("notificationclick", event => {
 });
 
 /* 将来Web Pushの送信側を追加したとき、そのまま受けられる受け口。
-   Phase 4A2では複数端末を同じ通知グループとして管理し、
+   Phase 4A3では任意日時の通知予約エンジンを追加し、
    アプリを閉じた状態でも登録端末へWeb Pushを配信できる。 */
 self.addEventListener("push", event => {
   if(!event.data) return;

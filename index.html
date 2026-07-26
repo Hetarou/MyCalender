@@ -1087,8 +1087,42 @@ dialog::backdrop{background:rgba(20,33,43,.42)}
   font-family:var(--data);font-size:18px;font-weight:700;letter-spacing:.08em;
 }
 .push-code-expire{font-size:11.5px;color:var(--ink-faint)}
+.push-scheduler-panel{
+  margin-top:16px;padding-top:14px;border-top:1px solid var(--rule-soft);
+}
+.push-schedule-form{
+  display:grid;grid-template-columns:1fr 1fr;gap:10px;
+  padding:12px;border:1px solid var(--rule-soft);border-radius:12px;background:var(--paper);
+}
+.push-schedule-form label{
+  display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--ink-soft);
+}
+.push-schedule-form label:nth-child(2){grid-column:span 1}
+.push-schedule-form input{
+  min-height:38px;padding:7px 10px;border:1px solid var(--rule);
+  border-radius:9px;background:var(--card);color:var(--ink);font:inherit;font-size:13px;
+}
+.push-schedule-form .srow{grid-column:1/-1}
+.push-schedule-list{
+  margin-top:10px;border:1px solid var(--rule-soft);border-radius:12px;overflow:hidden;background:var(--card);
+}
+.push-schedule-row{
+  display:flex;align-items:flex-start;gap:10px;padding:11px 12px;border-bottom:1px solid var(--rule-faint);
+}
+.push-schedule-row:last-child{border-bottom:none}
+.push-schedule-copy{flex:1;min-width:0}
+.push-schedule-copy b{display:block;font-size:13px}
+.push-schedule-copy span{display:block;margin-top:3px;font-size:11.5px;color:var(--ink-faint)}
+.push-schedule-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.push-schedule-actions button{
+  min-height:32px;padding:5px 9px;border:1px solid var(--rule);border-radius:8px;
+  background:var(--card);font-size:11.5px;color:var(--ink-soft);
+}
+.push-schedule-actions .danger{color:var(--danger)}
 @media (max-width:680px){
   .push-pair-grid{grid-template-columns:1fr}
+  .push-schedule-form{grid-template-columns:1fr}
+  .push-schedule-form label:nth-child(2){grid-column:auto}
   .push-panel-head{align-items:flex-start;flex-direction:column}
   .push-device-row{align-items:flex-start}
   .push-device-actions{max-width:110px}
@@ -1311,8 +1345,43 @@ dialog::backdrop{background:rgba(20,33,43,.42)}
                 </div>
               </div>
 
+              <div class="push-scheduler-panel" id="pushSchedulerPanel" hidden>
+                <div class="push-panel-head">
+                  <div>
+                    <b>日時指定通知 — A3テスト</b>
+                    <span class="push-count" id="pushScheduleCount">0件</span>
+                  </div>
+                  <button class="sbtn" id="pushScheduleRefresh">更新</button>
+                </div>
+
+                <p class="shint">
+                  Phase 4A3の予約エンジン確認用です。ここで作った通知は、scheduleを閉じていても登録端末すべてへ送信されます。
+                </p>
+
+                <div class="push-schedule-form">
+                  <label>
+                    通知タイトル
+                    <input id="pushScheduleTitle" type="text" maxlength="80" value="schedule">
+                  </label>
+                  <label>
+                    本文
+                    <input id="pushScheduleBody" type="text" maxlength="180" value="日時指定通知のテストです。">
+                  </label>
+                  <label>
+                    通知日時
+                    <input id="pushScheduleAt" type="datetime-local">
+                  </label>
+                  <div class="srow">
+                    <button class="sbtn primary" id="pushScheduleCreate">通知を予約</button>
+                    <button class="sbtn" id="pushScheduleFiveMin">5分後を入力</button>
+                  </div>
+                </div>
+
+                <div id="pushScheduleList" class="push-schedule-list"></div>
+              </div>
+
               <p class="shint" id="pushHint">
-                Phase 4A2では、複数端末を同じグループとして管理します。予定・タスクの自動予約はまだ行いません。
+                Phase 4A3では、任意日時の予約・変更・取消・二重送信防止を確認します。予定・タスクとの自動連携はA4で行います。
               </p>
             </div>
 
@@ -4311,6 +4380,7 @@ async function refreshWebPushFoundation(){
       `<b>接続済み</b> — ${Number(account?.devices?.length || 1)}台の端末を同じ通知グループとして管理しています。`
     );
     renderPushDevices(account);
+    await refreshPushSchedules();
   }catch(err){
     if(err.status === 401){
       clearPushDevice();
@@ -4585,6 +4655,156 @@ async function disconnectWebPushFoundation(){
 }
 
 
+/* ==========================================================
+   Phase 4A3 — 日時指定通知予約エンジン
+   ========================================================== */
+
+function toDatetimeLocalValue(date){
+  const d = new Date(date);
+  const pad = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function fillFiveMinutesLater(){
+  const input = document.getElementById('pushScheduleAt');
+  if(!input) return;
+  input.value = toDatetimeLocalValue(Date.now() + 5 * 60 * 1000);
+}
+
+function formatPushScheduleTime(ms){
+  const d = new Date(Number(ms));
+  if(Number.isNaN(d.getTime())) return '日時不明';
+  return d.toLocaleString('ja-JP', {
+    year:'numeric', month:'2-digit', day:'2-digit',
+    hour:'2-digit', minute:'2-digit'
+  });
+}
+
+async function refreshPushSchedules(){
+  const panel = document.getElementById('pushSchedulerPanel');
+  const list = document.getElementById('pushScheduleList');
+  const count = document.getElementById('pushScheduleCount');
+  if(!panel || !list || !count) return;
+
+  const connected = Boolean(getPushDevice()) && pushApiConfigured();
+  panel.hidden = !connected;
+  if(!connected) return;
+
+  try{
+    const result = await pushApiFetch('/v3/reminders', {method:'GET'});
+    const reminders = Array.isArray(result?.reminders) ? result.reminders : [];
+    count.textContent = `${reminders.length}件`;
+
+    list.innerHTML = reminders.length ? reminders.map(r => `
+      <div class="push-schedule-row">
+        <div class="push-schedule-copy">
+          <b>${esc(r.title || 'schedule')}</b>
+          <span>${esc(r.body || '')}</span>
+          <span>${formatPushScheduleTime(r.dueAt)} ・ ${esc(r.status || 'scheduled')}</span>
+        </div>
+        <div class="push-schedule-actions">
+          <button data-schedule-edit="${esc(r.id)}">変更</button>
+          <button class="danger" data-schedule-cancel="${esc(r.id)}">取消</button>
+        </div>
+      </div>
+    `).join('') : `
+      <div class="push-schedule-row">
+        <div class="push-schedule-copy"><span>予約中の通知はありません。</span></div>
+      </div>`;
+
+    list.querySelectorAll('[data-schedule-edit]').forEach(btn => {
+      btn.addEventListener('click', () => editPushSchedule(btn.dataset.scheduleEdit, reminders));
+    });
+    list.querySelectorAll('[data-schedule-cancel]').forEach(btn => {
+      btn.addEventListener('click', () => cancelPushSchedule(btn.dataset.scheduleCancel));
+    });
+  }catch(err){
+    list.innerHTML = `<div class="push-schedule-row"><div class="push-schedule-copy"><span>${esc(err.message)}</span></div></div>`;
+  }
+}
+
+async function createPushSchedule(){
+  const title = String(document.getElementById('pushScheduleTitle')?.value || '').trim();
+  const body = String(document.getElementById('pushScheduleBody')?.value || '').trim();
+  const rawAt = document.getElementById('pushScheduleAt')?.value || '';
+  const dueAt = new Date(rawAt).getTime();
+
+  if(!title || !body){
+    showToast('タイトルと本文を入力してください');
+    return;
+  }
+  if(!Number.isFinite(dueAt) || dueAt <= Date.now() + 5000){
+    showToast('現在より後の通知日時を指定してください');
+    return;
+  }
+
+  const button = document.getElementById('pushScheduleCreate');
+  if(button){ button.disabled = true; button.textContent = '予約中…'; }
+
+  try{
+    await pushApiFetch('/v3/reminders', {
+      method:'POST',
+      body:JSON.stringify({
+        title, body, dueAt,
+        clientRequestId: crypto.randomUUID()
+      })
+    });
+    showToast('日時指定通知を予約しました');
+    await refreshPushSchedules();
+  }catch(err){
+    showWarn('<strong>通知を予約できませんでした。</strong><br><span class="warn-detail">' + esc(err.message) + '</span>');
+  }finally{
+    if(button){ button.disabled = false; button.textContent = '通知を予約'; }
+  }
+}
+
+async function editPushSchedule(id, reminders){
+  const current = reminders.find(r => r.id === id);
+  if(!current) return;
+
+  const nextRaw = prompt(
+    '新しい通知日時を入力してください（例: 2026-07-27 13:50）',
+    toDatetimeLocalValue(current.dueAt).replace('T',' ')
+  );
+  if(nextRaw === null) return;
+
+  const dueAt = new Date(nextRaw.replace(' ', 'T')).getTime();
+  if(!Number.isFinite(dueAt) || dueAt <= Date.now() + 5000){
+    showToast('現在より後の日時を入力してください');
+    return;
+  }
+
+  try{
+    await pushApiFetch(`/v3/reminders/${encodeURIComponent(id)}`, {
+      method:'POST',
+      body:JSON.stringify({
+        title: current.title,
+        body: current.body,
+        dueAt
+      })
+    });
+    showToast('通知日時を変更しました');
+    await refreshPushSchedules();
+  }catch(err){
+    showWarn('<strong>通知を変更できませんでした。</strong><br><span class="warn-detail">' + esc(err.message) + '</span>');
+  }
+}
+
+async function cancelPushSchedule(id){
+  if(!confirm('この通知予約を取り消しますか？')) return;
+  try{
+    await pushApiFetch(`/v3/reminders/${encodeURIComponent(id)}/cancel`, {
+      method:'POST',
+      body:'{}'
+    });
+    showToast('通知予約を取り消しました');
+    await refreshPushSchedules();
+  }catch(err){
+    showWarn('<strong>通知予約を取り消せませんでした。</strong><br><span class="warn-detail">' + esc(err.message) + '</span>');
+  }
+}
+
+
 async function syncNotificationPrefsToGoogle(){
   if(Backend.name !== 'google'){ showToast('Googleカレンダーに接続してから利用できます'); return; }
   const targets = items.filter(it => (it.kind === 'class' && it.start) || (it.kind === 'event' && it.start));
@@ -4678,6 +4898,9 @@ document.getElementById('pushPairInput').addEventListener('input', e => {
   e.target.value = normalizedPairCode(e.target.value);
 });
 document.getElementById('pushDisconnect').addEventListener('click', disconnectWebPushFoundation);
+document.getElementById('pushScheduleCreate').addEventListener('click', createPushSchedule);
+document.getElementById('pushScheduleFiveMin').addEventListener('click', fillFiveMinutesLater);
+document.getElementById('pushScheduleRefresh').addEventListener('click', refreshPushSchedules);
 
 document.getElementById('notifyEnable').addEventListener('click', requestScheduleNotifications);
 document.getElementById('notifyTest').addEventListener('click', async () => {
@@ -4909,7 +5132,7 @@ document.getElementById('gsync').addEventListener('click', () => {
    Google Calendar / OAuthの通信処理とは独立して動作する。
    ========================================================== */
 (() => {
-  const APP_VERSION = "1.4.0-a2";
+  const APP_VERSION = "1.4.0-a3";
   const INSTALL_DISMISSED_KEY = "schedule:pwa-install-dismissed";
   let deferredInstallPrompt = null;
   let swRegistration = null;
