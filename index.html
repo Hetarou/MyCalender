@@ -1019,6 +1019,13 @@ dialog::backdrop{background:rgba(20,33,43,.42)}
   padding:14px;border:1px solid var(--rule-soft);border-radius:12px;background:var(--card);
 }
 .notify-card h4{font-size:13px;margin-bottom:10px}
+.notify-card.wide{grid-column:1/-1}
+.push-foundation-status{
+  display:flex;align-items:center;gap:8px;margin:6px 0 12px;
+  font-size:13px;color:var(--ink-soft)
+}
+.push-foundation-status .status-dot{margin:0;flex:0 0 auto}
+.push-foundation-status b{color:var(--ink);font-weight:600}
 .notify-card .field{margin-bottom:10px}
 .notify-card .field:last-child{margin-bottom:0}
 .notify-check{
@@ -1172,6 +1179,22 @@ dialog::backdrop{background:rgba(20,33,43,.42)}
           <p class="shint">テスト通知は、iPhone/PWAで通知表示できるかの確認専用です。将来時刻の予約通知には使いません。</p>
 
           <div class="notify-grid">
+            <div class="notify-card wide" id="pushFoundationCard">
+              <h4>バックグラウンド通知 — 基盤テスト</h4>
+              <div class="push-foundation-status">
+                <span class="status-dot" id="pushDot" aria-hidden="true"></span>
+                <span id="pushState"><b>未設定</b> — Pushサーバーを設定すると接続できます。</span>
+              </div>
+              <div class="srow">
+                <button class="sbtn primary" id="pushConnect">Web Pushを接続</button>
+                <button class="sbtn" id="pushBgTest" hidden>10秒後にテスト</button>
+                <button class="sbtn" id="pushDisconnect" hidden>接続解除</button>
+              </div>
+              <p class="shint" id="pushHint">
+                Phase 4A1では通信経路だけ確認します。「10秒後にテスト」を押したらscheduleを閉じ、10秒後に通知が届けば基盤成功です。
+              </p>
+            </div>
+
             <div class="notify-card">
               <h4>予定・授業</h4>
               <div class="field">
@@ -1424,6 +1447,10 @@ const CONFIG = {
   // 空のままならこの端末だけの保存（同期なし）で動く。
   // 入れ方は SETUP.md を見て。
   googleClientId: '854298949365-sksqgetbn9cvgk17fpishble4e00tde1.apps.googleusercontent.com',
+
+  // Phase 4A1: Cloudflare Worker をデプロイした後、そのURLに置き換える。
+  // 例: https://schedule-push.your-subdomain.workers.dev
+  pushApiBase: 'https://schedule-push.YOUR_SUBDOMAIN.workers.dev',
 
   calendarId: 'primary',   // 'primary' = Googleの標準カレンダー（授業・予定）
 
@@ -3886,6 +3913,8 @@ function drawNotificationSettings(){
       ? '設定変更後は「既存の予定へ反映」で、保存済みの予定・授業にも適用できます。新規・編集時は自動反映されます。'
       : 'Googleカレンダーとつなぐと、予定・授業の予約通知をGoogle側へ設定できます。';
   }
+
+  if(typeof drawWebPushFoundation === 'function') drawWebPushFoundation();
 }
 
 async function requestScheduleNotifications(){
@@ -3904,6 +3933,281 @@ async function requestScheduleNotifications(){
     await savePrefs(); drawNotificationSettings(); showToast('通知表示を許可しました');
   }else drawNotificationSettings();
 }
+
+
+/* ==========================================================
+   Phase 4A1 — Web Push 通知基盤
+   ----------------------------------------------------------
+   この段階では予定・タスクとの連携はしない。
+   端末の PushSubscription を Cloudflare Worker に登録し、
+   Worker 側の Durable Object Alarm から10秒後に通知を送れるかだけ確認する。
+   ========================================================== */
+const PUSH_DEVICE_STORAGE_KEY = 'schedule:pushDevice:v1';
+
+function webPushSupported(){
+  return 'serviceWorker' in navigator
+      && 'PushManager' in window
+      && notificationSupported();
+}
+
+function pushApiConfigured(){
+  const url = String(CONFIG.pushApiBase || '').trim();
+  return /^https:\/\//i.test(url) && !url.includes('YOUR_SUBDOMAIN');
+}
+
+function pushApiUrl(path){
+  return String(CONFIG.pushApiBase || '').replace(/\/+$/, '') + path;
+}
+
+function getPushDevice(){
+  try{
+    const raw = localStorage.getItem(PUSH_DEVICE_STORAGE_KEY);
+    if(!raw) return null;
+    const value = JSON.parse(raw);
+    if(!value?.deviceId || !value?.deviceSecret) return null;
+    return value;
+  }catch(err){
+    return null;
+  }
+}
+
+function savePushDevice(value){
+  localStorage.setItem(PUSH_DEVICE_STORAGE_KEY, JSON.stringify(value));
+}
+
+function clearPushDevice(){
+  localStorage.removeItem(PUSH_DEVICE_STORAGE_KEY);
+}
+
+function base64UrlToUint8Array(value){
+  const padding = '='.repeat((4 - value.length % 4) % 4);
+  const base64 = (value + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(base64);
+  return Uint8Array.from(raw, ch => ch.charCodeAt(0));
+}
+
+async function pushApiFetch(path, options = {}){
+  if(!pushApiConfigured()){
+    throw new Error('PushサーバーURLが未設定です。PUSH_SETUP.md の手順で設定してください。');
+  }
+
+  const headers = new Headers(options.headers || {});
+  if(options.body && !headers.has('Content-Type')){
+    headers.set('Content-Type', 'application/json');
+  }
+
+  const device = getPushDevice();
+  if(device){
+    headers.set('X-Schedule-Device-Id', device.deviceId);
+    headers.set('Authorization', `Bearer ${device.deviceSecret}`);
+  }
+
+  const response = await fetch(pushApiUrl(path), {
+    ...options,
+    headers,
+    cache: 'no-store'
+  });
+
+  let data = null;
+  try{ data = await response.json(); }catch(err){}
+
+  if(!response.ok){
+    throw new Error(data?.error || `Pushサーバーエラー (${response.status})`);
+  }
+  return data;
+}
+
+function setPushUi(mode, message){
+  const stateEl = document.getElementById('pushState');
+  const dot = document.getElementById('pushDot');
+  const connect = document.getElementById('pushConnect');
+  const test = document.getElementById('pushBgTest');
+  const disconnect = document.getElementById('pushDisconnect');
+  if(!stateEl || !dot || !connect || !test || !disconnect) return;
+
+  dot.classList.toggle('on', mode === 'connected');
+  connect.hidden = mode === 'connected';
+  test.hidden = mode !== 'connected';
+  disconnect.hidden = mode !== 'connected';
+
+  if(mode === 'unsupported'){
+    connect.hidden = false;
+    connect.disabled = true;
+  }else{
+    connect.disabled = false;
+  }
+
+  stateEl.innerHTML = message;
+}
+
+function drawWebPushFoundation(){
+  if(!webPushSupported()){
+    setPushUi('unsupported', '<b>利用できません</b> — この環境はWeb Pushに対応していません。');
+    return;
+  }
+
+  if(isIOS() && !isStandalonePwa()){
+    setPushUi('unsupported', '<b>ホーム画面版が必要</b> — iPhoneではホーム画面のscheduleから利用します。');
+    return;
+  }
+
+  if(!pushApiConfigured()){
+    setPushUi('setup', '<b>サーバー未設定</b> — Phase 4A1のWorkerをデプロイ後、URLを設定してください。');
+    return;
+  }
+
+  const device = getPushDevice();
+  if(device){
+    setPushUi('connected', '<b>接続情報あり</b> — Pushサーバーとの状態を確認中です。');
+  }else{
+    setPushUi('ready', '<b>未接続</b> — この端末をWeb Pushに登録できます。');
+  }
+}
+
+async function refreshWebPushFoundation(){
+  drawWebPushFoundation();
+  if(!webPushSupported() || !pushApiConfigured()) return;
+
+  const device = getPushDevice();
+  if(!device) return;
+
+  try{
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+
+    if(!sub){
+      clearPushDevice();
+      setPushUi('ready', '<b>未接続</b> — Push購読がありません。もう一度接続してください。');
+      return;
+    }
+
+    const status = await pushApiFetch('/v1/status', { method:'GET' });
+    if(status?.connected){
+      setPushUi('connected', '<b>接続済み</b> — アプリを閉じた状態でもPushを受け取れる準備ができています。');
+    }else{
+      setPushUi('ready', '<b>再接続が必要</b> — サーバー側の登録が見つかりません。');
+    }
+  }catch(err){
+    setPushUi('ready', `<b>確認できません</b> — ${esc(err.message)}`);
+  }
+}
+
+async function connectWebPushFoundation(){
+  if(!webPushSupported()){
+    showToast('この環境はWeb Pushに対応していません');
+    return;
+  }
+  if(isIOS() && !isStandalonePwa()){
+    showToast('iPhoneではホーム画面のscheduleから接続してください');
+    return;
+  }
+  if(!pushApiConfigured()){
+    showWarn('<strong>Pushサーバーが未設定です。</strong><br>PUSH_SETUP.md の手順でCloudflare Workerをデプロイしてください。');
+    return;
+  }
+
+  // iOSでは通知許可要求をユーザー操作から直接開始する。
+  let permission = notificationPermission();
+  if(permission === 'default'){
+    permission = await Notification.requestPermission();
+  }
+  if(permission !== 'granted'){
+    drawNotificationSettings();
+    showToast('通知が許可されていません');
+    return;
+  }
+
+  const button = document.getElementById('pushConnect');
+  if(button){ button.disabled = true; button.textContent = '接続中…'; }
+
+  try{
+    const keyResult = await pushApiFetch('/v1/vapid-public-key', { method:'GET' });
+    if(!keyResult?.publicKey) throw new Error('VAPID公開鍵を取得できませんでした');
+
+    const reg = await navigator.serviceWorker.ready;
+    let subscription = await reg.pushManager.getSubscription();
+
+    if(!subscription){
+      subscription = await reg.pushManager.subscribe({
+        userVisibleOnly:true,
+        applicationServerKey:base64UrlToUint8Array(keyResult.publicKey)
+      });
+    }
+
+    const current = getPushDevice();
+    const result = await pushApiFetch('/v1/register', {
+      method:'POST',
+      body:JSON.stringify({
+        deviceId: current?.deviceId || null,
+        subscription: subscription.toJSON()
+      })
+    });
+
+    const nextDevice = {
+      deviceId: result.deviceId || current?.deviceId,
+      deviceSecret: result.deviceSecret || current?.deviceSecret
+    };
+    if(!nextDevice.deviceId || !nextDevice.deviceSecret){
+      throw new Error('端末認証情報を受け取れませんでした');
+    }
+
+    savePushDevice(nextDevice);
+    prefs.notifyEnabled = true;
+    await savePrefs();
+    drawNotificationSettings();
+    await refreshWebPushFoundation();
+    showToast('Web Pushに接続しました');
+  }catch(err){
+    showWarn('<strong>Web Pushに接続できませんでした。</strong><br><span class="warn-detail">' + esc(err.message) + '</span>');
+  }finally{
+    if(button){ button.disabled = false; button.textContent = 'Web Pushを接続'; }
+  }
+}
+
+async function testBackgroundWebPush(){
+  const button = document.getElementById('pushBgTest');
+  if(button){ button.disabled = true; button.textContent = '予約中…'; }
+
+  try{
+    const result = await pushApiFetch('/v1/test', {
+      method:'POST',
+      body:JSON.stringify({})
+    });
+    const seconds = Number(result?.delaySeconds || 10);
+    showToast(`${seconds}秒後のPushを予約しました。scheduleを閉じて試してください`);
+  }catch(err){
+    showWarn('<strong>バックグラウンドテストを予約できませんでした。</strong><br><span class="warn-detail">' + esc(err.message) + '</span>');
+  }finally{
+    if(button){ button.disabled = false; button.textContent = '10秒後にテスト'; }
+  }
+}
+
+async function disconnectWebPushFoundation(){
+  const button = document.getElementById('pushDisconnect');
+  if(button){ button.disabled = true; button.textContent = '解除中…'; }
+
+  try{
+    if(getPushDevice() && pushApiConfigured()){
+      try{ await pushApiFetch('/v1/unregister', { method:'POST', body:'{}' }); }
+      catch(err){ console.warn('push unregister failed:', err); }
+    }
+
+    if('serviceWorker' in navigator){
+      const reg = await navigator.serviceWorker.ready;
+      const subscription = await reg.pushManager.getSubscription();
+      if(subscription) await subscription.unsubscribe();
+    }
+
+    clearPushDevice();
+    drawWebPushFoundation();
+    showToast('Web Pushの接続を解除しました');
+  }catch(err){
+    showWarn('<strong>Web Pushの解除に失敗しました。</strong><br><span class="warn-detail">' + esc(err.message) + '</span>');
+  }finally{
+    if(button){ button.disabled = false; button.textContent = '接続解除'; }
+  }
+}
+
 
 async function syncNotificationPrefsToGoogle(){
   if(Backend.name !== 'google'){ showToast('Googleカレンダーに接続してから利用できます'); return; }
@@ -3985,6 +4289,10 @@ if('serviceWorker' in navigator){
     }
   });
 }
+
+document.getElementById('pushConnect').addEventListener('click', connectWebPushFoundation);
+document.getElementById('pushBgTest').addEventListener('click', testBackgroundWebPush);
+document.getElementById('pushDisconnect').addEventListener('click', disconnectWebPushFoundation);
 
 document.getElementById('notifyEnable').addEventListener('click', requestScheduleNotifications);
 document.getElementById('notifyTest').addEventListener('click', async () => {
@@ -4216,7 +4524,7 @@ document.getElementById('gsync').addEventListener('click', () => {
    Google Calendar / OAuthの通信処理とは独立して動作する。
    ========================================================== */
 (() => {
-  const APP_VERSION = "1.3.3";
+  const APP_VERSION = "1.4.0-a1";
   const INSTALL_DISMISSED_KEY = "schedule:pwa-install-dismissed";
   let deferredInstallPrompt = null;
   let swRegistration = null;
@@ -4321,6 +4629,9 @@ document.getElementById('gsync').addEventListener('click', () => {
       swRegistration = await navigator.serviceWorker.register("./sw.js");
       console.log("Service Worker registered:", swRegistration.scope);
       if(typeof refreshNotificationEngine === "function") refreshNotificationEngine();
+      if(typeof refreshWebPushFoundation === "function"){
+        refreshWebPushFoundation().catch(err => console.warn('Web Push status check failed:', err));
+      }
 
       if(swRegistration.waiting){
         showUpdateReady(swRegistration.waiting);

@@ -3,7 +3,7 @@
  * Google Calendar / OAuthなど外部オリジンの通信には介入しない。
  */
 
-const CACHE_VERSION = "v1.3.3";
+const CACHE_VERSION = "v1.4.0-a1";
 const STATIC_CACHE = `schedule-static-${CACHE_VERSION}`;
 const PAGE_CACHE = `schedule-pages-${CACHE_VERSION}`;
 
@@ -175,8 +175,8 @@ self.addEventListener("notificationclick", event => {
 });
 
 /* 将来Web Pushの送信側を追加したとき、そのまま受けられる受け口。
-   現在のv1.3.3ではPush購読/送信サーバーは持たず、
-   PWA起動中の通知 + Google Calendar remindersを利用する。 */
+   Phase 4A1ではPush購読/送信サーバーを追加し、
+   アプリを閉じた状態でのWeb Push通信経路をテストできる。 */
 self.addEventListener("push", event => {
   if(!event.data) return;
   let payload = {};
