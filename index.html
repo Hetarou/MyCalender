@@ -1087,6 +1087,36 @@ dialog::backdrop{background:rgba(20,33,43,.42)}
   font-family:var(--data);font-size:18px;font-weight:700;letter-spacing:.08em;
 }
 .push-code-expire{font-size:11.5px;color:var(--ink-faint)}
+.push-management-panel{
+  margin-top:16px;padding:12px;border:1px solid var(--rule-soft);
+  border-radius:12px;background:var(--paper);
+}
+.push-management-head{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  margin-bottom:10px;
+}
+.push-management-head b{font-size:13px}
+.push-management-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.push-management-box{
+  padding:12px;border:1px solid var(--rule-soft);border-radius:12px;background:var(--card);
+}
+.push-management-box>b{display:block;margin-bottom:5px;font-size:12.5px}
+.push-history-block{margin-top:12px}
+.push-history-list{
+  border:1px solid var(--rule-soft);border-radius:12px;overflow:hidden;background:var(--card);
+}
+.push-history-row{
+  display:flex;gap:10px;padding:10px 12px;border-bottom:1px solid var(--rule-faint);
+}
+.push-history-row:last-child{border-bottom:none}
+.push-history-icon{
+  width:30px;height:30px;border-radius:9px;display:grid;place-items:center;
+  flex:0 0 auto;background:var(--paper);border:1px solid var(--rule-soft);
+}
+.push-history-copy{flex:1;min-width:0}
+.push-history-copy b{display:block;font-size:13px}
+.push-history-copy span{display:block;margin-top:2px;font-size:11.5px;color:var(--ink-faint)}
+.push-history-empty{padding:12px;font-size:12px;color:var(--ink-faint)}
 .push-managed-panel{
   margin-top:16px;padding:12px;border:1px solid var(--rule-soft);
   border-radius:12px;background:var(--paper);
@@ -1127,6 +1157,7 @@ dialog::backdrop{background:rgba(20,33,43,.42)}
 .push-schedule-actions .danger{color:var(--danger)}
 @media (max-width:680px){
   .push-pair-grid{grid-template-columns:1fr}
+  .push-management-grid{grid-template-columns:1fr}
   .push-schedule-form{grid-template-columns:1fr}
   .push-schedule-form label:nth-child(2){grid-column:auto}
   .push-panel-head{align-items:flex-start;flex-direction:column}
@@ -1348,6 +1379,44 @@ dialog::backdrop{background:rgba(20,33,43,.42)}
                       <button class="sbtn primary" id="pushPairClaim">リンク</button>
                     </div>
                   </div>
+                </div>
+              </div>
+
+              <div class="push-management-panel" id="pushManagementPanel" hidden>
+                <div class="push-management-head">
+                  <div>
+                    <b>通知管理</b>
+                    <span class="push-count" id="pushManagementState">稼働中</span>
+                  </div>
+                  <button class="sbtn" id="pushManagementRefresh">更新</button>
+                </div>
+
+                <div class="push-management-grid">
+                  <div class="push-management-box">
+                    <b>通知を一時停止</b>
+                    <p class="shint" id="pushPauseHint">通知は通常どおり送信されます。</p>
+                    <div class="srow">
+                      <button class="sbtn" id="pushPauseHour">1時間停止</button>
+                      <button class="sbtn" id="pushPauseToday">今日まで停止</button>
+                      <button class="sbtn primary" id="pushResumeAll" hidden>通知を再開</button>
+                    </div>
+                  </div>
+
+                  <div class="push-management-box">
+                    <b>次回通知</b>
+                    <p class="shint" id="pushNextNotification">確認中…</p>
+                  </div>
+                </div>
+
+                <div class="push-history-block">
+                  <div class="push-panel-head">
+                    <div>
+                      <b>通知履歴</b>
+                      <span class="push-count" id="pushHistoryCount">0件</span>
+                    </div>
+                    <button class="sbtn" id="pushHistoryClear">履歴を消去</button>
+                  </div>
+                  <div id="pushHistoryList" class="push-history-list"></div>
                 </div>
               </div>
 
@@ -4202,6 +4271,7 @@ function drawNotificationSettings(){
 
   if(typeof drawWebPushFoundation === 'function') drawWebPushFoundation();
   if(typeof refreshManagedPushStatus === 'function') refreshManagedPushStatus().catch(() => {});
+  if(typeof refreshNotificationManagement === 'function') refreshNotificationManagement().catch(() => {});
 }
 
 async function requestScheduleNotifications(){
@@ -4429,15 +4499,22 @@ function renderPushDevices(account){
         <div class="push-device-icon">${deviceIcon(d.platform)}</div>
         <div class="push-device-copy">
           <b>${name}${isCurrent ? '<span class="push-current-badge">この端末</span>' : ''}</b>
-          <span>${platform}</span>
+          <span>${platform} ・ ${d.enabled === false ? '通知OFF' : '通知ON'}</span>
         </div>
         <div class="push-device-actions">
+          <button data-device-toggle="${esc(d.deviceId)}" data-enabled="${d.enabled !== false ? '1' : '0'}">${d.enabled === false ? '通知をON' : '通知をOFF'}</button>
           <button data-device-rename="${esc(d.deviceId)}">名前変更</button>
           <button class="danger" data-device-remove="${esc(d.deviceId)}">${isCurrent ? '解除' : '削除'}</button>
         </div>
       </div>`;
   }).join('') || '<div class="push-device-row"><div class="push-device-copy"><span>登録端末がありません。</span></div></div>';
 
+  list.querySelectorAll('[data-device-toggle]').forEach(button => {
+    button.addEventListener('click', () => togglePushDevice(
+      button.dataset.deviceToggle,
+      button.dataset.enabled !== '1'
+    ));
+  });
   list.querySelectorAll('[data-device-rename]').forEach(button => {
     button.addEventListener('click', () => renamePushDevice(button.dataset.deviceRename));
   });
@@ -4479,6 +4556,7 @@ async function refreshWebPushFoundation(){
     renderPushDevices(account);
     await refreshPushSchedules();
     if(typeof refreshManagedPushStatus === 'function') await refreshManagedPushStatus();
+    if(typeof refreshNotificationManagement === 'function') await refreshNotificationManagement();
   }catch(err){
     if(err.status === 401){
       clearPushDevice();
@@ -4754,6 +4832,152 @@ async function disconnectWebPushFoundation(){
   await removePushDevice(current.deviceId);
 }
 
+
+/* ==========================================================
+   Phase 5 — 通知UX・通知管理
+   ========================================================== */
+
+function notificationKindIcon(kind){
+  if(kind === 'event') return '📅';
+  if(kind === 'task') return '✓';
+  if(kind === 'ivy') return '◉';
+  if(kind === 'test' || kind === 'scheduled-reminder') return '🔔';
+  return '•';
+}
+
+function formatPauseUntil(ms){
+  const n = Number(ms);
+  if(!Number.isFinite(n) || n <= Date.now()) return '';
+  return new Date(n).toLocaleString('ja-JP', {
+    month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'
+  });
+}
+
+async function togglePushDevice(deviceId, enabled){
+  try{
+    await pushApiFetch('/v5/device/enabled', {
+      method:'POST',
+      body:JSON.stringify({ deviceId, enabled:Boolean(enabled) })
+    });
+    await refreshWebPushFoundation();
+    showToast(enabled ? 'この端末の通知をONにしました' : 'この端末の通知をOFFにしました');
+  }catch(err){
+    showWarn('<strong>端末の通知設定を変更できませんでした。</strong><br><span class="warn-detail">' + esc(err.message) + '</span>');
+  }
+}
+
+async function pauseAllNotifications(untilMs){
+  try{
+    const result = await pushApiFetch('/v5/pause', {
+      method:'POST',
+      body:JSON.stringify({ pausedUntil:Number(untilMs) })
+    });
+    await refreshNotificationManagement();
+    showToast(`通知を${formatPauseUntil(result.pausedUntil)}まで停止しました`);
+  }catch(err){
+    showWarn('<strong>通知を停止できませんでした。</strong><br><span class="warn-detail">' + esc(err.message) + '</span>');
+  }
+}
+
+async function resumeAllNotifications(){
+  try{
+    await pushApiFetch('/v5/resume', { method:'POST', body:'{}' });
+    await refreshNotificationManagement();
+    showToast('通知を再開しました');
+  }catch(err){
+    showWarn('<strong>通知を再開できませんでした。</strong><br><span class="warn-detail">' + esc(err.message) + '</span>');
+  }
+}
+
+function pauseUntilEndOfToday(){
+  const d = new Date();
+  d.setHours(23,59,59,999);
+  return d.getTime();
+}
+
+async function clearNotificationHistory(){
+  if(!confirm('通知履歴を消去しますか？')) return;
+  try{
+    await pushApiFetch('/v5/history/clear', { method:'POST', body:'{}' });
+    await refreshNotificationManagement();
+    showToast('通知履歴を消去しました');
+  }catch(err){
+    showWarn('<strong>通知履歴を消去できませんでした。</strong><br><span class="warn-detail">' + esc(err.message) + '</span>');
+  }
+}
+
+function renderNotificationHistory(history){
+  const list = document.getElementById('pushHistoryList');
+  const count = document.getElementById('pushHistoryCount');
+  if(!list || !count) return;
+
+  const rows = Array.isArray(history) ? history : [];
+  count.textContent = `${rows.length}件`;
+
+  if(!rows.length){
+    list.innerHTML = '<div class="push-history-empty">まだ通知履歴はありません。</div>';
+    return;
+  }
+
+  list.innerHTML = rows.slice(0,50).map(entry => `
+    <div class="push-history-row">
+      <div class="push-history-icon">${notificationKindIcon(entry.kind)}</div>
+      <div class="push-history-copy">
+        <b>${esc(entry.title || 'schedule')}</b>
+        <span>${esc(entry.body || '')}</span>
+        <span>${formatPushScheduleTime(entry.sentAt)} ・ ${Number(entry.deliveredCount || 0)}台へ送信</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function refreshNotificationManagement(){
+  const panel = document.getElementById('pushManagementPanel');
+  if(!panel) return;
+
+  const connected = canSyncManagedPush();
+  panel.hidden = !connected;
+  if(!connected) return;
+
+  const state = document.getElementById('pushManagementState');
+  const pauseHint = document.getElementById('pushPauseHint');
+  const resume = document.getElementById('pushResumeAll');
+  const pauseHour = document.getElementById('pushPauseHour');
+  const pauseToday = document.getElementById('pushPauseToday');
+  const nextEl = document.getElementById('pushNextNotification');
+
+  try{
+    const result = await pushApiFetch('/v5/management', {method:'GET'});
+    const pausedUntil = Number(result?.pausedUntil || 0);
+    const paused = pausedUntil > Date.now();
+
+    if(state) state.textContent = paused ? '一時停止中' : '稼働中';
+    if(pauseHint){
+      pauseHint.textContent = paused
+        ? `${formatPauseUntil(pausedUntil)}まで通知を送信しません。再開後、停止中に期限を迎えた通知を送ります。`
+        : '通知は通常どおり送信されます。';
+    }
+
+    if(resume) resume.hidden = !paused;
+    if(pauseHour) pauseHour.hidden = paused;
+    if(pauseToday) pauseToday.hidden = paused;
+
+    if(nextEl){
+      nextEl.textContent = result?.nextReminder
+        ? `${formatPushScheduleTime(result.nextReminder.dueAt)} — ${result.nextReminder.title}`
+        : '現在、予約中の通知はありません。';
+    }
+
+    renderNotificationHistory(result?.history || []);
+  }catch(err){
+    if(state) state.textContent = '確認失敗';
+    if(pauseHint){
+      pauseHint.textContent = err.status === 404
+        ? 'Cloudflare WorkerをPhase 5版へ更新してください。'
+        : `通知管理を確認できません: ${err.message}`;
+    }
+  }
+}
 
 /* ==========================================================
    Phase 4A4 — 予定・タスク・Ivy Lee 自動通知連携
@@ -5277,6 +5501,17 @@ document.getElementById('fGoogleReminderEnabled').addEventListener('change', asy
 document.getElementById('pushManagedSync').addEventListener('click', () => {
   syncManagedPushNotifications({silent:false}).catch(() => {});
 });
+document.getElementById('pushManagementRefresh').addEventListener('click', () => {
+  refreshNotificationManagement().catch(() => {});
+});
+document.getElementById('pushPauseHour').addEventListener('click', () => {
+  pauseAllNotifications(Date.now() + 60 * 60 * 1000);
+});
+document.getElementById('pushPauseToday').addEventListener('click', () => {
+  pauseAllNotifications(pauseUntilEndOfToday());
+});
+document.getElementById('pushResumeAll').addEventListener('click', resumeAllNotifications);
+document.getElementById('pushHistoryClear').addEventListener('click', clearNotificationHistory);
 
 /* ==========================================================
    8. データの持ち出し／持ち込み
@@ -5498,7 +5733,7 @@ document.getElementById('gsync').addEventListener('click', () => {
    Google Calendar / OAuthの通信処理とは独立して動作する。
    ========================================================== */
 (() => {
-  const APP_VERSION = "1.4.0-a4";
+  const APP_VERSION = "1.5.0";
   const INSTALL_DISMISSED_KEY = "schedule:pwa-install-dismissed";
   let deferredInstallPrompt = null;
   let swRegistration = null;

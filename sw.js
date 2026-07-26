@@ -3,7 +3,7 @@
  * Google Calendar / OAuthなど外部オリジンの通信には介入しない。
  */
 
-const CACHE_VERSION = "v1.4.0-a4";
+const CACHE_VERSION = "v1.5.0";
 const STATIC_CACHE = `schedule-static-${CACHE_VERSION}`;
 const PAGE_CACHE = `schedule-pages-${CACHE_VERSION}`;
 
@@ -177,7 +177,7 @@ self.addEventListener("notificationclick", event => {
 });
 
 /* Web Push受信口。
-   Phase 4A4では予定・タスク・Ivy Leeの自動予約通知を受信する。 */
+   Phase 5では通知管理・履歴・端末別ON/OFFを追加する。 */
 self.addEventListener("push", event => {
   if(!event.data) return;
   let payload = {};
