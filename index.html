@@ -1160,25 +1160,22 @@ dialog::backdrop{background:rgba(20,33,43,.42)}
           <div class="settings-title-row">
             <div>
               <h3>通知</h3>
-              <p class="settings-desc">予定の直前と、タスクの期限を知らせます。</p>
+              <p class="settings-desc">確実に届く通知だけを設定します。</p>
             </div>
             <span class="status-dot" id="notifyDot" aria-hidden="true"></span>
           </div>
-
-          <div class="notify-status-line">
-            <p class="sline" id="notifyState">確認中</p>
-          </div>
-
+          <div class="notify-status-line"><p class="sline" id="notifyState">確認中</p></div>
           <div class="srow">
             <button class="sbtn primary" id="notifyEnable">通知を有効にする</button>
             <button class="sbtn" id="notifyTest" hidden>テスト通知</button>
           </div>
+          <p class="shint">テスト通知は、iPhone/PWAで通知表示できるかの確認専用です。将来時刻の予約通知には使いません。</p>
 
           <div class="notify-grid">
             <div class="notify-card">
               <h4>予定・授業</h4>
               <div class="field">
-                <label for="fEventReminder">いつ知らせるか</label>
+                <label for="fEventReminder">Google Calendarで知らせる</label>
                 <select id="fEventReminder">
                   <option value="-1">通知しない</option>
                   <option value="0">開始時</option>
@@ -1189,42 +1186,23 @@ dialog::backdrop{background:rgba(20,33,43,.42)}
                   <option value="60">1時間前</option>
                 </select>
               </div>
-              <p class="shint">開始時刻がある予定・授業が対象です。</p>
+              <p class="shint">開始時刻がある予定・授業が対象です。Googleカレンダー接続中は、新規・編集した予定へこの設定を反映します。</p>
             </div>
-
             <div class="notify-card">
               <h4>タスク</h4>
-              <label class="notify-check">
-                <input type="checkbox" id="fTaskSameNotify">
-                <span>期限日の朝に通知</span>
-              </label>
-              <div class="field" id="taskSameTimeField">
-                <label for="fTaskNotifyTime">当日の時刻</label>
-                <input type="time" id="fTaskNotifyTime" step="300">
-              </div>
-              <label class="notify-check">
-                <input type="checkbox" id="fTaskPrevNotify">
-                <span>前日にも通知</span>
-              </label>
-              <div class="field" id="taskPrevTimeField">
-                <label for="fTaskPrevNotifyTime">前日の時刻</label>
-                <input type="time" id="fTaskPrevNotifyTime" step="300">
-              </div>
+              <p class="sline">通知機能は準備中</p>
+              <p class="shint">PWAを閉じていても確実に届くWeb Push方式で実装する予定です。現在は、届かない可能性がある予約通知は使用しません。</p>
             </div>
           </div>
 
           <div class="notify-google-line">
             <div class="copy">
               <b>Googleカレンダーへの反映</b>
-              <span id="notifyGoogleHint">Google連携中は、予定・授業とタスク前日の通知をGoogle側にも設定できます。</span>
+              <span id="notifyGoogleHint">Googleカレンダーと接続すると、予定・授業の予約通知をGoogle側へ設定できます。</span>
             </div>
-            <button class="sbtn" id="notifyGoogleApply" hidden>Googleへ反映</button>
+            <button class="sbtn" id="notifyGoogleApply" hidden>既存の予定へ反映</button>
           </div>
-
-          <p class="notify-note" id="notifyLimitNote">
-            <strong>iPhone:</strong> このアプリ自身の時刻通知は、ホーム画面から起動したPWAで許可できます。
-            アプリが完全に閉じている間も確実に受けたい場合は、Googleカレンダー連携時の通知反映を併用してください。
-          </p>
+          <p class="notify-note" id="notifyLimitNote"><strong>重要:</strong> schedule単体では、アプリを閉じた状態での時刻指定通知を行いません。予定・授業の予約通知はGoogle Calendarを使用します。テスト通知は通知権限の確認専用です。</p>
         </section>
 
         <section class="settings-section">
@@ -1801,44 +1779,22 @@ function nextWeekdayFrom(weekday){
 
 
 /* ---------- 通知設定をGoogleイベントへ反映 ----------
-   Google Calendarのremindersは「開始より何分前」で指定する。
-   タスクは終日イベントなので、前日通知だけをGoogle側へ反映する。
-   当日朝の通知はPWA側で扱う（終日イベント開始後の時刻はremindersでは表せないため）。 */
+   信頼できる予約通知はGoogle Calendarに任せる。
+   対象は開始時刻のある予定・授業のみ。PWAの通知権限とは独立して設定する。 */
 function googleReminderFor(it){
-  if(!prefs.notifyEnabled) return null;
-
-  if((it.kind === 'class' || it.kind === 'event') && it.start){
-    const mins = Number(prefs.eventReminderMinutes);
-    if(Number.isFinite(mins) && mins >= 0){
-      return { useDefault:false, overrides:[{ method:'popup', minutes:mins }] };
-    }
+  if(!((it.kind === 'class' || it.kind === 'event') && it.start)) return undefined;
+  const mins = Number(prefs.eventReminderMinutes);
+  if(Number.isFinite(mins) && mins >= 0){
+    return { useDefault:false, overrides:[{ method:'popup', minutes:mins }] };
   }
-
-  if(it.kind === 'task' && prefs.taskPrevDayNotify){
-    const t = String(prefs.taskPrevNotifyTime || '20:00');
-    const [h,m] = t.split(':').map(Number);
-    if(Number.isFinite(h) && Number.isFinite(m)){
-      // 終日予定は期限日の0:00開始。前日HH:MMは、その開始の何分前かに変換できる。
-      const mins = (24 * 60) - (h * 60 + m);
-      if(mins >= 0 && mins <= 24 * 60){
-        return { useDefault:false, overrides:[{ method:'popup', minutes:mins }] };
-      }
-    }
-  }
-
-  return null;
+  return { useDefault:false, overrides:[] };
 }
 
 let forceGoogleReminderSync = false;
 
 function attachGoogleReminder(ev, it){
   const reminders = googleReminderFor(it);
-  if(reminders) ev.reminders = reminders;
-  else if(prefs.notifyEnabled || forceGoogleReminderSync){
-    // 通知機能を有効にしている間は、アプリ側の設定を正とする。
-    // 対象外・「通知しない」の項目に古いGoogle reminderが残らないよう明示的に空にする。
-    ev.reminders = { useDefault:false, overrides:[] };
-  }
+  if(reminders !== undefined) ev.reminders = reminders;
   return ev;
 }
 
@@ -3318,10 +3274,6 @@ function prepareSettingsPage(){
   document.getElementById('catSummary').textContent = cats.map(c => c.name).join('・') || '（未設定）';
 
   document.getElementById('fEventReminder').value = String(Number.isFinite(Number(prefs.eventReminderMinutes)) ? Number(prefs.eventReminderMinutes) : 10);
-  document.getElementById('fTaskSameNotify').checked = prefs.taskSameDayNotify !== false;
-  document.getElementById('fTaskNotifyTime').value = prefs.taskNotifyTime || '09:00';
-  document.getElementById('fTaskPrevNotify').checked = prefs.taskPrevDayNotify !== false;
-  document.getElementById('fTaskPrevNotifyTime').value = prefs.taskPrevNotifyTime || '20:00';
 
   validPeriodSnapshot = PERIODS.map(p => ({...p}));
   buildPeriodEdit(); drawSync(); drawNotificationSettings();
@@ -3773,18 +3725,12 @@ document.getElementById('tabMonth').addEventListener('click', () => { state.view
 
 
 /* ==========================================================
-   Phase 3 — 通知
+   Phase 3.1 — 通知
    ----------------------------------------------------------
-   ・ブラウザ/PWA自身の通知:
-       アプリが動いている間、30秒ごとに期限を確認して通知する。
-       バックグラウンド停止後に復帰した場合は、直近2分だけ取りこぼしを補う。
-   ・Googleカレンダー:
-       開始時刻のある予定/授業と、タスクの前日通知をremindersへ反映できる。
+   PWA側は通知権限とテスト通知だけを扱う。
+   将来時刻の予約通知は、予定・授業についてGoogle Calendarへ反映する。
+   タスクは信頼できるWeb Push方式を導入するまで予約通知しない。
    ========================================================== */
-const NOTIFY_LEDGER_KEY = 'schedule:notify-ledger:v1';
-let notificationTimer = null;
-let notificationLastCheck = Date.now();
-
 function isStandalonePwa(){
   return window.matchMedia?.('(display-mode: standalone)').matches === true
       || window.navigator.standalone === true;
@@ -3793,137 +3739,16 @@ function isIOS(){
   return /iPhone|iPad|iPod/i.test(navigator.userAgent)
       || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 }
-function notificationSupported(){
-  return 'Notification' in window;
-}
-function notificationPermission(){
-  return notificationSupported() ? Notification.permission : 'unsupported';
-}
-
-function loadNotifyLedger(){
-  try{
-    const raw = localStorage.getItem(NOTIFY_LEDGER_KEY);
-    const x = raw ? JSON.parse(raw) : {};
-    return x && typeof x === 'object' && !Array.isArray(x) ? x : {};
-  }catch(e){ return {}; }
-}
-function saveNotifyLedger(ledger){
-  try{
-    const cutoff = Date.now() - 21 * 86400000;
-    for(const [k,v] of Object.entries(ledger)){
-      if(Number(v) < cutoff) delete ledger[k];
-    }
-    localStorage.setItem(NOTIFY_LEDGER_KEY, JSON.stringify(ledger));
-  }catch(e){}
-}
-function wasNotified(key){
-  return Boolean(loadNotifyLedger()[key]);
-}
-function markNotified(key){
-  const ledger = loadNotifyLedger();
-  ledger[key] = Date.now();
-  saveNotifyLedger(ledger);
-}
-
-function localDateTime(dateStr, hhmm){
-  const [y,mo,d] = dateStr.split('-').map(Number);
-  const [h,m] = String(hhmm || '00:00').split(':').map(Number);
-  return new Date(y, mo - 1, d, h || 0, m || 0, 0, 0);
-}
-
-function notificationCandidates(now = new Date()){
-  const out = [];
-  if(!prefs.notifyEnabled) return out;
-
-  // 通知の前後を含む数日だけ作る。毎週授業もこの範囲の曜日から発生させる。
-  const dateBase = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const dates = [-1,0,1,2].map(n => fmt(addDays(dateBase,n)));
-
-  const lead = Number(prefs.eventReminderMinutes);
-  if(Number.isFinite(lead) && lead >= 0){
-    for(const it of items){
-      if(it.kind === 'task' || !it.start) continue;
-
-      if(it.kind === 'class'){
-        for(const ds of dates){
-          const d = parse(ds);
-          if(d.getDay() !== Number(it.weekday)) continue;
-          if(it.termEnd && ds > it.termEnd) continue;
-          const startAt = localDateTime(ds, it.start);
-          const when = new Date(startAt.getTime() - lead * 60000);
-          out.push({
-            key:`event:${it.id}:${ds}:${lead}`,
-            when:when.getTime(),
-            title:it.title,
-            body:lead === 0 ? `${it.start} 開始` : `${it.start}から・${lead}分前`,
-            kind:'event',
-            date:ds,
-            itemId:it.id
-          });
-        }
-        continue;
-      }
-
-      // 通常の予定は開始日に1回だけ通知する。
-      const startAt = localDateTime(it.date, it.start);
-      const when = new Date(startAt.getTime() - lead * 60000);
-      out.push({
-        key:`event:${it.id}:${it.date}:${lead}`,
-        when:when.getTime(),
-        title:it.title,
-        body:lead === 0 ? `${it.start} 開始` : `${it.start}から・${lead}分前`,
-        kind:'event',
-        date:it.date,
-        itemId:it.id
-      });
-    }
-  }
-
-  for(const it of openTasks()){
-    if(prefs.taskSameDayNotify){
-      const t = prefs.taskNotifyTime || '09:00';
-      out.push({
-        key:`task:${it.id}:same:${it.date}:${t}`,
-        when:localDateTime(it.date,t).getTime(),
-        title:it.title,
-        body:it.start ? `今日が期限です（${it.start}まで）` : '今日が期限です',
-        kind:'task',
-        date:it.date,
-        itemId:it.id
-      });
-    }
-    if(prefs.taskPrevDayNotify){
-      const t = prefs.taskPrevNotifyTime || '20:00';
-      const prev = fmt(addDays(parse(it.date), -1));
-      out.push({
-        key:`task:${it.id}:prev:${it.date}:${t}`,
-        when:localDateTime(prev,t).getTime(),
-        title:it.title,
-        body:it.start ? `明日が期限です（${it.start}まで）` : '明日が期限です',
-        kind:'task',
-        date:it.date,
-        itemId:it.id
-      });
-    }
-  }
-  return out;
-}
+function notificationSupported(){ return 'Notification' in window; }
+function notificationPermission(){ return notificationSupported() ? Notification.permission : 'unsupported'; }
 
 async function showScheduleNotification(info){
   if(notificationPermission() !== 'granted') return false;
   const options = {
-    body: info.body || '',
-    icon: './icon-192.png',
-    badge: './icon-192.png',
-    tag: 'schedule-' + (info.key || Date.now()),
-    renotify: false,
-    data: {
-      kind: info.kind || '',
-      date: info.date || '',
-      itemId: info.itemId || ''
-    }
+    body: info.body || '', icon: './icon-192.png', badge: './icon-192.png',
+    tag: 'schedule-' + (info.key || Date.now()), renotify: false,
+    data: { kind: info.kind || 'test' }
   };
-
   try{
     if('serviceWorker' in navigator){
       const reg = await navigator.serviceWorker.ready;
@@ -3932,41 +3757,10 @@ async function showScheduleNotification(info){
       new Notification(info.title || 'schedule', options);
     }
     return true;
-  }catch(err){
-    console.warn('schedule notification failed:', err);
-    return false;
-  }
+  }catch(err){ console.warn('schedule notification failed:', err); return false; }
 }
 
-async function checkNotifications(){
-  const now = Date.now();
-  if(!prefs.notifyEnabled || notificationPermission() !== 'granted'){
-    notificationLastCheck = now;
-    return;
-  }
-
-  // タイマー停止から復帰した場合も、2分より古い通知はまとめて鳴らさない。
-  const from = Math.max(notificationLastCheck, now - 120000);
-  notificationLastCheck = now;
-
-  for(const n of notificationCandidates(new Date(now))){
-    if(n.when <= from || n.when > now || wasNotified(n.key)) continue;
-    if(await showScheduleNotification(n)) markNotified(n.key);
-  }
-}
-
-function refreshNotificationEngine(){
-  if(notificationTimer){
-    clearInterval(notificationTimer);
-    notificationTimer = null;
-  }
-  notificationLastCheck = Date.now();
-
-  if(prefs.notifyEnabled && notificationPermission() === 'granted'){
-    notificationTimer = setInterval(checkNotifications, 30000);
-  }
-  drawNotificationSettings();
-}
+function refreshNotificationEngine(){ drawNotificationSettings(); }
 
 function drawNotificationSettings(){
   const stateEl = document.getElementById('notifyState');
@@ -3974,218 +3768,83 @@ function drawNotificationSettings(){
   const enable = document.getElementById('notifyEnable');
   const test = document.getElementById('notifyTest');
   if(!stateEl || !dot || !enable || !test) return;
-
   const perm = notificationPermission();
   const iOSNeedsInstall = isIOS() && !isStandalonePwa();
-
-  dot.classList.remove('on');
-  enable.disabled = false;
-  test.hidden = true;
+  dot.classList.remove('on'); enable.disabled = false; test.hidden = true;
 
   if(perm === 'unsupported'){
     stateEl.textContent = 'このブラウザでは通知を利用できません';
-    enable.textContent = '利用できません';
-    enable.disabled = true;
+    enable.textContent = '利用できません'; enable.disabled = true;
   }else if(iOSNeedsInstall && perm !== 'granted'){
-    stateEl.textContent = 'ホーム画面のアプリから有効にできます';
-    enable.textContent = 'ホーム画面から起動して設定';
-    enable.disabled = true;
+    stateEl.textContent = 'ホーム画面のアプリから通知を確認できます';
+    enable.textContent = 'ホーム画面から起動して設定'; enable.disabled = true;
   }else if(perm === 'denied'){
     stateEl.textContent = '通知がブロックされています';
-    enable.textContent = '端末の通知設定で許可してください';
-    enable.disabled = true;
-  }else if(perm === 'granted' && prefs.notifyEnabled){
-    stateEl.textContent = '通知は有効です';
-    dot.classList.add('on');
-    enable.textContent = '通知を停止';
-    test.hidden = false;
+    enable.textContent = '端末の通知設定で許可してください'; enable.disabled = true;
   }else if(perm === 'granted'){
-    stateEl.textContent = '通知の許可はあります（現在は停止中）';
-    enable.textContent = '通知を有効にする';
+    stateEl.textContent = '通知表示を利用できます'; dot.classList.add('on');
+    enable.textContent = '許可済み'; enable.disabled = true; test.hidden = false;
   }else{
-    stateEl.textContent = 'まだ通知を許可していません';
+    stateEl.textContent = '通知表示はまだ許可されていません';
     enable.textContent = '通知を有効にする';
   }
-
-  const sameField = document.getElementById('taskSameTimeField');
-  const prevField = document.getElementById('taskPrevTimeField');
-  if(sameField) sameField.hidden = !document.getElementById('fTaskSameNotify')?.checked;
-  if(prevField) prevField.hidden = !document.getElementById('fTaskPrevNotify')?.checked;
 
   const googleApply = document.getElementById('notifyGoogleApply');
   const googleHint = document.getElementById('notifyGoogleHint');
   if(googleApply) googleApply.hidden = Backend.name !== 'google';
   if(googleHint){
     googleHint.textContent = Backend.name === 'google'
-      ? '設定を変えたら「Googleへ反映」で既存の予定にも適用できます。'
-      : 'Googleカレンダーとつなぐと、予定・授業とタスク前日の通知をGoogle側にも設定できます。';
+      ? '設定変更後は「既存の予定へ反映」で、保存済みの予定・授業にも適用できます。新規・編集時は自動反映されます。'
+      : 'Googleカレンダーとつなぐと、予定・授業の予約通知をGoogle側へ設定できます。';
   }
 }
 
 async function requestScheduleNotifications(){
   if(!notificationSupported()) return;
-
-  // iOSではホーム画面Webアプリから、利用者の操作を起点に許可を求める必要がある。
   if(isIOS() && !isStandalonePwa()){
     showToast('iPhoneではホーム画面に追加したscheduleから通知を有効にしてください');
-    drawNotificationSettings();
-    return;
+    drawNotificationSettings(); return;
   }
-
   let perm = notificationPermission();
   if(perm === 'default'){
     try{ perm = await Notification.requestPermission(); }
     catch(err){ perm = notificationPermission(); }
   }
-
   if(perm === 'granted'){
     prefs.notifyEnabled = true;
-    await savePrefs();
-    refreshNotificationEngine();
-    showToast('通知を有効にしました');
-  }else{
-    drawNotificationSettings();
-  }
-}
-
-async function toggleScheduleNotifications(){
-  if(notificationPermission() !== 'granted'){
-    await requestScheduleNotifications();
-    return;
-  }
-  prefs.notifyEnabled = !prefs.notifyEnabled;
-  await savePrefs();
-  refreshNotificationEngine();
-  showToast(prefs.notifyEnabled ? '通知を有効にしました' : '通知を停止しました');
+    await savePrefs(); drawNotificationSettings(); showToast('通知表示を許可しました');
+  }else drawNotificationSettings();
 }
 
 async function syncNotificationPrefsToGoogle(){
-  if(Backend.name !== 'google'){
-    showToast('Googleカレンダーに接続してから利用できます');
-    return;
-  }
-
-  const targets = items.filter(it =>
-    (it.kind === 'class')
-    || (it.kind === 'event' && it.start)
-    || it.kind === 'task'
-  );
-
-  if(!targets.length){
-    showToast('反映する予定がありません');
-    return;
-  }
-
+  if(Backend.name !== 'google'){ showToast('Googleカレンダーに接続してから利用できます'); return; }
+  const targets = items.filter(it => (it.kind === 'class' && it.start) || (it.kind === 'event' && it.start));
+  if(!targets.length){ showToast('反映する予定・授業がありません'); return; }
   const button = document.getElementById('notifyGoogleApply');
   if(button){ button.disabled = true; button.textContent = '反映中…'; }
-  beginWrite();
-
-  let ok = 0;
-  forceGoogleReminderSync = true;
+  beginWrite(); let ok = 0; forceGoogleReminderSync = true;
   try{
-    for(const it of targets){
-      await Backend.upsert(it);
-      ok++;
-    }
-    lastSync = new Date().toTimeString().slice(0,5);
-    drawSync();
-    showToast(`${ok}件に通知設定を反映しました`);
+    for(const it of targets){ await Backend.upsert(it); ok++; }
+    lastSync = new Date().toTimeString().slice(0,5); drawSync();
+    showToast(`${ok}件の予定・授業に通知設定を反映しました`);
   }catch(err){
     showWarn('<strong>通知設定をGoogleへ反映できなかった。</strong><br><span class="warn-detail">' + esc(err.message) + '</span>');
   }finally{
-    forceGoogleReminderSync = false;
-    endWrite();
-    if(button){ button.disabled = false; button.textContent = 'Googleへ反映'; }
+    forceGoogleReminderSync = false; endWrite();
+    if(button){ button.disabled = false; button.textContent = '既存の予定へ反映'; }
   }
 }
 
-let notificationDeepLinkHandled = false;
-
-function handleNotificationUrl(){
-  if(notificationDeepLinkHandled) return;
-  notificationDeepLinkHandled = true;
-
-  try{
-    const url = new URL(location.href);
-    const kind = url.searchParams.get('notifyKind');
-    const date = url.searchParams.get('notifyDate') || '';
-    const itemId = url.searchParams.get('notifyItem') || '';
-    if(!kind) return;
-
-    openNotificationTarget({ kind, date, itemId });
-
-    url.searchParams.delete('notifyKind');
-    url.searchParams.delete('notifyDate');
-    url.searchParams.delete('notifyItem');
-    history.replaceState(null, '', url.pathname + (url.search ? url.search : '') + url.hash);
-  }catch(e){}
-}
-
-function openNotificationTarget(data){
-  if(!data) return;
-  if(data.kind === 'task'){
-    state.screen = 'task';
-    taskTab = 'today';
-    render();
-    window.scrollTo({top:0,behavior:'auto'});
-    return;
-  }
-  if(data.kind === 'event' && data.date){
-    state.screen = 'calendar';
-    state.cursor = parse(data.date);
-    state.view = narrowScreen() ? 'day' : 'week';
-    render();
-    window.scrollTo({top:0,behavior:'auto'});
-  }
-}
-
-if('serviceWorker' in navigator){
-  navigator.serviceWorker.addEventListener('message', e => {
-    if(e.data?.type === 'SCHEDULE_NOTIFICATION_CLICK'){
-      openNotificationTarget(e.data);
-    }
-  });
-}
-
-document.addEventListener('visibilitychange', () => {
-  if(document.visibilityState === 'visible') checkNotifications();
-});
-window.addEventListener('focus', checkNotifications);
-
-document.getElementById('notifyEnable').addEventListener('click', toggleScheduleNotifications);
+document.getElementById('notifyEnable').addEventListener('click', requestScheduleNotifications);
 document.getElementById('notifyTest').addEventListener('click', async () => {
-  if(await showScheduleNotification({
-    key:'test-' + Date.now(),
-    title:'schedule',
-    body:'通知のテストです。設定は正常に動いています。',
-    kind:'test'
-  })){
-    showToast('テスト通知を送りました');
-  }
+  if(await showScheduleNotification({key:'test-' + Date.now(), title:'schedule', body:'テスト通知です。通知表示は正常に動作しています。', kind:'test'})) showToast('テスト通知を送りました');
 });
 document.getElementById('notifyGoogleApply').addEventListener('click', syncNotificationPrefsToGoogle);
-
 document.getElementById('fEventReminder').addEventListener('change', async e => {
   prefs.eventReminderMinutes = Number(e.target.value);
-  await savePrefs(); refreshNotificationEngine();
+  await savePrefs(); drawNotificationSettings();
+  if(Backend.name === 'google') showToast('新規・編集する予定にはこの通知設定が適用されます');
 });
-document.getElementById('fTaskSameNotify').addEventListener('change', async e => {
-  prefs.taskSameDayNotify = e.target.checked;
-  await savePrefs(); refreshNotificationEngine();
-});
-document.getElementById('fTaskNotifyTime').addEventListener('change', async e => {
-  prefs.taskNotifyTime = e.target.value || '09:00';
-  await savePrefs(); refreshNotificationEngine();
-});
-document.getElementById('fTaskPrevNotify').addEventListener('change', async e => {
-  prefs.taskPrevDayNotify = e.target.checked;
-  await savePrefs(); refreshNotificationEngine();
-});
-document.getElementById('fTaskPrevNotifyTime').addEventListener('change', async e => {
-  prefs.taskPrevNotifyTime = e.target.value || '20:00';
-  await savePrefs(); refreshNotificationEngine();
-});
-
 
 /* ==========================================================
    8. データの持ち出し／持ち込み
@@ -4386,7 +4045,7 @@ document.getElementById('gsync').addEventListener('click', async () => {
    Google Calendar / OAuthの通信処理とは独立して動作する。
    ========================================================== */
 (() => {
-  const APP_VERSION = "1.3.0";
+  const APP_VERSION = "1.3.1";
   const INSTALL_DISMISSED_KEY = "schedule:pwa-install-dismissed";
   let deferredInstallPrompt = null;
   let swRegistration = null;
