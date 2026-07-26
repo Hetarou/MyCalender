@@ -1026,6 +1026,74 @@ dialog::backdrop{background:rgba(20,33,43,.42)}
 }
 .push-foundation-status .status-dot{margin:0;flex:0 0 auto}
 .push-foundation-status b{color:var(--ink);font-weight:600}
+.push-server-config{
+  margin:12px 0 14px;padding:12px;border:1px solid var(--rule-soft);
+  border-radius:12px;background:var(--paper);
+}
+.push-server-config label{display:block;margin-bottom:7px;font-size:12px;color:var(--ink-soft)}
+.push-inline{display:flex;gap:8px;align-items:center}
+.push-inline input{
+  flex:1;min-width:0;min-height:38px;padding:7px 10px;
+  border:1px solid var(--rule);border-radius:9px;background:var(--card);
+  color:var(--ink);font:inherit;font-size:13px;
+}
+.push-device-panel{
+  margin-top:16px;padding-top:14px;border-top:1px solid var(--rule-soft);
+}
+.push-panel-head{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  margin-bottom:10px;
+}
+.push-panel-head b{font-size:13px}
+.push-count{margin-left:6px;color:var(--ink-faint);font-family:var(--data);font-size:12px}
+.push-device-list{
+  border:1px solid var(--rule-soft);border-radius:12px;overflow:hidden;background:var(--card);
+}
+.push-device-row{
+  display:flex;align-items:center;gap:10px;padding:11px 12px;
+  border-bottom:1px solid var(--rule-faint);
+}
+.push-device-row:last-child{border-bottom:none}
+.push-device-icon{
+  width:34px;height:34px;border-radius:10px;display:grid;place-items:center;
+  flex:0 0 auto;background:var(--paper);border:1px solid var(--rule-soft);
+  font-size:16px;
+}
+.push-device-copy{flex:1;min-width:0}
+.push-device-copy b{display:block;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.push-device-copy span{display:block;margin-top:2px;font-size:11.5px;color:var(--ink-faint)}
+.push-device-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.push-device-actions button{
+  min-height:32px;padding:5px 9px;border:1px solid var(--rule);
+  border-radius:8px;background:var(--card);font-size:11.5px;color:var(--ink-soft);
+}
+.push-device-actions .danger{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 35%,var(--rule))}
+.push-current-badge{
+  display:inline-block;margin-left:6px;padding:1px 6px;border-radius:999px;
+  background:var(--accent-bg);color:var(--accent);font-size:10.5px;font-weight:700;
+}
+.push-pair-grid{
+  display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;
+}
+.push-pair-box{
+  padding:12px;border:1px solid var(--rule-soft);border-radius:12px;background:var(--paper);
+}
+.push-pair-box>b{display:block;font-size:12.5px;margin-bottom:5px}
+.push-code-box{
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;
+}
+.push-code{
+  padding:7px 10px;border:1px solid var(--rule);border-radius:9px;background:var(--card);
+  font-family:var(--data);font-size:18px;font-weight:700;letter-spacing:.08em;
+}
+.push-code-expire{font-size:11.5px;color:var(--ink-faint)}
+@media (max-width:680px){
+  .push-pair-grid{grid-template-columns:1fr}
+  .push-panel-head{align-items:flex-start;flex-direction:column}
+  .push-device-row{align-items:flex-start}
+  .push-device-actions{max-width:110px}
+  .push-inline{align-items:stretch}
+}
 .notify-card .field{margin-bottom:10px}
 .notify-card .field:last-child{margin-bottom:0}
 .notify-check{
@@ -1180,18 +1248,71 @@ dialog::backdrop{background:rgba(20,33,43,.42)}
 
           <div class="notify-grid">
             <div class="notify-card wide" id="pushFoundationCard">
-              <h4>バックグラウンド通知 — 基盤テスト</h4>
+              <h4>Web Push — 端末管理</h4>
+
               <div class="push-foundation-status">
                 <span class="status-dot" id="pushDot" aria-hidden="true"></span>
                 <span id="pushState"><b>未設定</b> — Pushサーバーを設定すると接続できます。</span>
               </div>
+
+              <div class="push-server-config">
+                <label for="pushServerUrl">Pushサーバー</label>
+                <div class="push-inline">
+                  <input id="pushServerUrl" type="url"
+                    placeholder="https://xxxx.xxxxx.workers.dev"
+                    autocomplete="off" spellcheck="false">
+                  <button class="sbtn" id="pushServerSave">保存</button>
+                </div>
+                <p class="shint">A1で使ったCloudflare WorkerのURLをそのまま使います。今後はここから変更できます。</p>
+              </div>
+
               <div class="srow">
                 <button class="sbtn primary" id="pushConnect">Web Pushを接続</button>
-                <button class="sbtn" id="pushBgTest" hidden>10秒後にテスト</button>
-                <button class="sbtn" id="pushDisconnect" hidden>接続解除</button>
+                <button class="sbtn" id="pushBgTest" hidden>この端末に10秒テスト</button>
+                <button class="sbtn" id="pushDisconnect" hidden>この端末を解除</button>
               </div>
+
+              <div id="pushDevicePanel" class="push-device-panel" hidden>
+                <div class="push-panel-head">
+                  <div>
+                    <b>登録端末</b>
+                    <span id="pushDeviceCount" class="push-count"></span>
+                  </div>
+                  <button class="sbtn" id="pushAllTest">全端末に10秒テスト</button>
+                </div>
+
+                <div id="pushDeviceList" class="push-device-list"></div>
+
+                <div class="push-pair-grid">
+                  <div class="push-pair-box">
+                    <b>別の端末を追加</b>
+                    <p class="shint">この端末でリンクコードを発行し、追加したい端末側で入力します。コードは10分で失効し、一度だけ使えます。</p>
+                    <button class="sbtn" id="pushPairCreate">リンクコードを発行</button>
+
+                    <div id="pushPairCodeBox" class="push-code-box" hidden>
+                      <span id="pushPairCode" class="push-code">----</span>
+                      <button class="sbtn" id="pushPairCopy">コピー</button>
+                      <span id="pushPairExpire" class="push-code-expire"></span>
+                    </div>
+                  </div>
+
+                  <div class="push-pair-box">
+                    <b>この端末を既存グループへリンク</b>
+                    <p class="shint">別端末で発行したコードを入力します。リンクすると、同じ通知を両方の端末へ送れるようになります。</p>
+                    <div class="push-inline">
+                      <input id="pushPairInput" type="text"
+                        inputmode="text" maxlength="9"
+                        placeholder="ABCD-EFGH"
+                        autocomplete="one-time-code"
+                        autocapitalize="characters">
+                      <button class="sbtn primary" id="pushPairClaim">リンク</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <p class="shint" id="pushHint">
-                Phase 4A1では通信経路だけ確認します。「10秒後にテスト」を押したらscheduleを閉じ、10秒後に通知が届けば基盤成功です。
+                Phase 4A2では、複数端末を同じグループとして管理します。予定・タスクの自動予約はまだ行いません。
               </p>
             </div>
 
@@ -1450,7 +1571,7 @@ const CONFIG = {
 
   // Phase 4A1: Cloudflare Worker をデプロイした後、そのURLに置き換える。
   // 例: https://schedule-push.your-subdomain.workers.dev
-    pushApiBase: 'https://schedule-push.isida0427.workers.dev',
+  pushApiBase: 'https://schedule-push.YOUR_SUBDOMAIN.workers.dev',
 
   calendarId: 'primary',   // 'primary' = Googleの標準カレンダー（授業・予定）
 
@@ -3936,13 +4057,16 @@ async function requestScheduleNotifications(){
 
 
 /* ==========================================================
-   Phase 4A1 — Web Push 通知基盤
+   Phase 4A2 — Web Push 端末・購読管理
    ----------------------------------------------------------
-   この段階では予定・タスクとの連携はしない。
-   端末の PushSubscription を Cloudflare Worker に登録し、
-   Worker 側の Durable Object Alarm から10秒後に通知を送れるかだけ確認する。
+   ・A1のdeviceId / deviceSecretはそのまま引き継ぐ
+   ・端末をアカウントグループへ所属させる
+   ・一時リンクコードでPC / iPhone等を同じグループへまとめる
+   ・登録端末の一覧、名前変更、解除
+   ・全登録端末への10秒テスト
    ========================================================== */
 const PUSH_DEVICE_STORAGE_KEY = 'schedule:pushDevice:v1';
+const PUSH_SERVER_STORAGE_KEY = 'schedule:pushServer:v1';
 
 function webPushSupported(){
   return 'serviceWorker' in navigator
@@ -3950,13 +4074,19 @@ function webPushSupported(){
       && notificationSupported();
 }
 
+function getPushServerUrl(){
+  const stored = String(localStorage.getItem(PUSH_SERVER_STORAGE_KEY) || '').trim();
+  if(stored) return stored.replace(/\/+$/, '');
+  return String(CONFIG.pushApiBase || '').trim().replace(/\/+$/, '');
+}
+
 function pushApiConfigured(){
-  const url = String(CONFIG.pushApiBase || '').trim();
+  const url = getPushServerUrl();
   return /^https:\/\//i.test(url) && !url.includes('YOUR_SUBDOMAIN');
 }
 
 function pushApiUrl(path){
-  return String(CONFIG.pushApiBase || '').replace(/\/+$/, '') + path;
+  return getPushServerUrl() + path;
 }
 
 function getPushDevice(){
@@ -3988,7 +4118,7 @@ function base64UrlToUint8Array(value){
 
 async function pushApiFetch(path, options = {}){
   if(!pushApiConfigured()){
-    throw new Error('PushサーバーURLが未設定です。PUSH_SETUP.md の手順で設定してください。');
+    throw new Error('PushサーバーURLが未設定です。通知設定でWorker URLを保存してください。');
   }
 
   const headers = new Headers(options.headers || {});
@@ -4005,16 +4135,57 @@ async function pushApiFetch(path, options = {}){
   const response = await fetch(pushApiUrl(path), {
     ...options,
     headers,
-    cache: 'no-store'
+    cache:'no-store'
   });
 
   let data = null;
   try{ data = await response.json(); }catch(err){}
 
   if(!response.ok){
-    throw new Error(data?.error || `Pushサーバーエラー (${response.status})`);
+    const error = new Error(data?.error || `Pushサーバーエラー (${response.status})`);
+    error.status = response.status;
+    throw error;
   }
   return data;
+}
+
+function defaultPushDeviceMeta(){
+  const ua = navigator.userAgent || '';
+  let platform = 'Web';
+  let name = 'この端末';
+  let icon = '💻';
+
+  if(/iPhone/i.test(ua)){
+    platform = 'iPhone';
+    name = 'iPhone';
+    icon = '📱';
+  }else if(/iPad/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)){
+    platform = 'iPad';
+    name = 'iPad';
+    icon = '📱';
+  }else if(/Android/i.test(ua)){
+    platform = 'Android';
+    name = 'Android';
+    icon = '📱';
+  }else if(/Windows/i.test(ua)){
+    platform = 'Windows';
+    name = 'Windows PC';
+    icon = '💻';
+  }else if(/Macintosh|Mac OS X/i.test(ua)){
+    platform = 'macOS';
+    name = 'Mac';
+    icon = '💻';
+  }else if(/Linux/i.test(ua)){
+    platform = 'Linux';
+    name = 'Linux PC';
+    icon = '💻';
+  }
+
+  return { name, platform, icon };
+}
+
+function deviceIcon(platform){
+  return /iPhone|iPad|Android|mobile/i.test(platform || '') ? '📱' : '💻';
 }
 
 function setPushUi(mode, message){
@@ -4023,12 +4194,14 @@ function setPushUi(mode, message){
   const connect = document.getElementById('pushConnect');
   const test = document.getElementById('pushBgTest');
   const disconnect = document.getElementById('pushDisconnect');
-  if(!stateEl || !dot || !connect || !test || !disconnect) return;
+  const panel = document.getElementById('pushDevicePanel');
+  if(!stateEl || !dot || !connect || !test || !disconnect || !panel) return;
 
   dot.classList.toggle('on', mode === 'connected');
   connect.hidden = mode === 'connected';
   test.hidden = mode !== 'connected';
   disconnect.hidden = mode !== 'connected';
+  panel.hidden = mode !== 'connected';
 
   if(mode === 'unsupported'){
     connect.hidden = false;
@@ -4040,7 +4213,15 @@ function setPushUi(mode, message){
   stateEl.innerHTML = message;
 }
 
+function drawPushServerField(){
+  const field = document.getElementById('pushServerUrl');
+  if(!field) return;
+  if(document.activeElement !== field) field.value = getPushServerUrl();
+}
+
 function drawWebPushFoundation(){
+  drawPushServerField();
+
   if(!webPushSupported()){
     setPushUi('unsupported', '<b>利用できません</b> — この環境はWeb Pushに対応していません。');
     return;
@@ -4052,16 +4233,51 @@ function drawWebPushFoundation(){
   }
 
   if(!pushApiConfigured()){
-    setPushUi('setup', '<b>サーバー未設定</b> — Phase 4A1のWorkerをデプロイ後、URLを設定してください。');
+    setPushUi('setup', '<b>サーバー未設定</b> — A1で作ったCloudflare WorkerのURLを保存してください。');
     return;
   }
 
   const device = getPushDevice();
   if(device){
-    setPushUi('connected', '<b>接続情報あり</b> — Pushサーバーとの状態を確認中です。');
+    setPushUi('connected', '<b>接続情報あり</b> — 端末グループを確認中です。');
   }else{
     setPushUi('ready', '<b>未接続</b> — この端末をWeb Pushに登録できます。');
   }
+}
+
+function renderPushDevices(account){
+  const list = document.getElementById('pushDeviceList');
+  const count = document.getElementById('pushDeviceCount');
+  if(!list || !count) return;
+
+  const current = getPushDevice();
+  const devices = Array.isArray(account?.devices) ? account.devices : [];
+  count.textContent = `${devices.length}台`;
+
+  list.innerHTML = devices.map(d => {
+    const isCurrent = d.deviceId === current?.deviceId;
+    const name = esc(d.name || d.platform || '端末');
+    const platform = esc(d.platform || 'Web');
+    return `
+      <div class="push-device-row" data-device="${esc(d.deviceId)}">
+        <div class="push-device-icon">${deviceIcon(d.platform)}</div>
+        <div class="push-device-copy">
+          <b>${name}${isCurrent ? '<span class="push-current-badge">この端末</span>' : ''}</b>
+          <span>${platform}</span>
+        </div>
+        <div class="push-device-actions">
+          <button data-device-rename="${esc(d.deviceId)}">名前変更</button>
+          <button class="danger" data-device-remove="${esc(d.deviceId)}">${isCurrent ? '解除' : '削除'}</button>
+        </div>
+      </div>`;
+  }).join('') || '<div class="push-device-row"><div class="push-device-copy"><span>登録端末がありません。</span></div></div>';
+
+  list.querySelectorAll('[data-device-rename]').forEach(button => {
+    button.addEventListener('click', () => renamePushDevice(button.dataset.deviceRename));
+  });
+  list.querySelectorAll('[data-device-remove]').forEach(button => {
+    button.addEventListener('click', () => removePushDevice(button.dataset.deviceRemove));
+  });
 }
 
 async function refreshWebPushFoundation(){
@@ -4081,15 +4297,47 @@ async function refreshWebPushFoundation(){
       return;
     }
 
-    const status = await pushApiFetch('/v1/status', { method:'GET' });
-    if(status?.connected){
-      setPushUi('connected', '<b>接続済み</b> — アプリを閉じた状態でもPushを受け取れる準備ができています。');
-    }else{
-      setPushUi('ready', '<b>再接続が必要</b> — サーバー側の登録が見つかりません。');
-    }
+    // A1端末をA2の端末グループへ自動移行し、現在の端末情報も更新する。
+    const meta = defaultPushDeviceMeta();
+    await pushApiFetch('/v2/device/metadata', {
+      method:'POST',
+      body:JSON.stringify({ name:meta.name, platform:meta.platform })
+    });
+
+    const account = await pushApiFetch('/v2/account', { method:'GET' });
+
+    setPushUi(
+      'connected',
+      `<b>接続済み</b> — ${Number(account?.devices?.length || 1)}台の端末を同じ通知グループとして管理しています。`
+    );
+    renderPushDevices(account);
   }catch(err){
+    if(err.status === 401){
+      clearPushDevice();
+      setPushUi('ready', '<b>再接続が必要</b> — サーバー側の端末登録が失効しています。');
+      return;
+    }
+    if(err.status === 404){
+      setPushUi('ready', '<b>A2サーバー更新が必要</b> — Cloudflare WorkerをPhase 4A2版へ更新してください。');
+      return;
+    }
     setPushUi('ready', `<b>確認できません</b> — ${esc(err.message)}`);
   }
+}
+
+async function savePushServer(){
+  const input = document.getElementById('pushServerUrl');
+  const value = String(input?.value || '').trim().replace(/\/+$/, '');
+
+  if(!/^https:\/\/[^/]+/i.test(value)){
+    showToast('https:// から始まるWorker URLを入力してください');
+    return;
+  }
+
+  localStorage.setItem(PUSH_SERVER_STORAGE_KEY, value);
+  drawWebPushFoundation();
+  await refreshWebPushFoundation();
+  showToast('PushサーバーURLを保存しました');
 }
 
 async function connectWebPushFoundation(){
@@ -4102,11 +4350,10 @@ async function connectWebPushFoundation(){
     return;
   }
   if(!pushApiConfigured()){
-    showWarn('<strong>Pushサーバーが未設定です。</strong><br>PUSH_SETUP.md の手順でCloudflare Workerをデプロイしてください。');
+    showWarn('<strong>Pushサーバーが未設定です。</strong><br>A1で作ったCloudflare Worker URLを設定してください。');
     return;
   }
 
-  // iOSでは通知許可要求をユーザー操作から直接開始する。
   let permission = notificationPermission();
   if(permission === 'default'){
     permission = await Notification.requestPermission();
@@ -4135,17 +4382,20 @@ async function connectWebPushFoundation(){
     }
 
     const current = getPushDevice();
+    const meta = defaultPushDeviceMeta();
     const result = await pushApiFetch('/v1/register', {
       method:'POST',
       body:JSON.stringify({
-        deviceId: current?.deviceId || null,
-        subscription: subscription.toJSON()
+        deviceId:current?.deviceId || null,
+        subscription:subscription.toJSON(),
+        name:meta.name,
+        platform:meta.platform
       })
     });
 
     const nextDevice = {
-      deviceId: result.deviceId || current?.deviceId,
-      deviceSecret: result.deviceSecret || current?.deviceSecret
+      deviceId:result.deviceId || current?.deviceId,
+      deviceSecret:result.deviceSecret || current?.deviceSecret
     };
     if(!nextDevice.deviceId || !nextDevice.deviceSecret){
       throw new Error('端末認証情報を受け取れませんでした');
@@ -4174,38 +4424,164 @@ async function testBackgroundWebPush(){
       body:JSON.stringify({})
     });
     const seconds = Number(result?.delaySeconds || 10);
-    showToast(`${seconds}秒後のPushを予約しました。scheduleを閉じて試してください`);
+    showToast(`${seconds}秒後、この端末だけにPushを送ります`);
   }catch(err){
-    showWarn('<strong>バックグラウンドテストを予約できませんでした。</strong><br><span class="warn-detail">' + esc(err.message) + '</span>');
+    showWarn('<strong>この端末のテストを予約できませんでした。</strong><br><span class="warn-detail">' + esc(err.message) + '</span>');
   }finally{
-    if(button){ button.disabled = false; button.textContent = '10秒後にテスト'; }
+    if(button){ button.disabled = false; button.textContent = 'この端末に10秒テスト'; }
+  }
+}
+
+async function testAllPushDevices(){
+  const button = document.getElementById('pushAllTest');
+  if(button){ button.disabled = true; button.textContent = '予約中…'; }
+
+  try{
+    const result = await pushApiFetch('/v2/test-all', {
+      method:'POST',
+      body:'{}'
+    });
+    const seconds = Number(result?.delaySeconds || 10);
+    const count = Number(result?.deviceCount || 0);
+    showToast(`${seconds}秒後、登録済み${count}台すべてにPushを送ります`);
+  }catch(err){
+    showWarn('<strong>全端末テストを予約できませんでした。</strong><br><span class="warn-detail">' + esc(err.message) + '</span>');
+  }finally{
+    if(button){ button.disabled = false; button.textContent = '全端末に10秒テスト'; }
+  }
+}
+
+async function createPushPairCode(){
+  const button = document.getElementById('pushPairCreate');
+  if(button){ button.disabled = true; button.textContent = '発行中…'; }
+
+  try{
+    const result = await pushApiFetch('/v2/pair/create', {
+      method:'POST',
+      body:'{}'
+    });
+
+    const box = document.getElementById('pushPairCodeBox');
+    const codeEl = document.getElementById('pushPairCode');
+    const expire = document.getElementById('pushPairExpire');
+
+    codeEl.textContent = result.code;
+    const minutes = Math.max(1, Math.ceil((Number(result.expiresAt) - Date.now()) / 60000));
+    expire.textContent = `約${minutes}分有効`;
+    box.hidden = false;
+    showToast('リンクコードを発行しました');
+  }catch(err){
+    showWarn('<strong>リンクコードを発行できませんでした。</strong><br><span class="warn-detail">' + esc(err.message) + '</span>');
+  }finally{
+    if(button){ button.disabled = false; button.textContent = 'リンクコードを発行'; }
+  }
+}
+
+function normalizedPairCode(value){
+  const raw = String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if(raw.length === 8) return raw.slice(0,4) + '-' + raw.slice(4);
+  return String(value || '').toUpperCase().trim();
+}
+
+async function claimPushPairCode(){
+  const input = document.getElementById('pushPairInput');
+  const code = normalizedPairCode(input?.value);
+  if(!code){
+    showToast('リンクコードを入力してください');
+    return;
+  }
+
+  const button = document.getElementById('pushPairClaim');
+  if(button){ button.disabled = true; button.textContent = 'リンク中…'; }
+
+  try{
+    const result = await pushApiFetch('/v2/pair/claim', {
+      method:'POST',
+      body:JSON.stringify({ code })
+    });
+    input.value = '';
+    await refreshWebPushFoundation();
+    showToast(`${Number(result?.deviceCount || 0)}台の端末を同じグループにリンクしました`);
+  }catch(err){
+    showWarn('<strong>端末をリンクできませんでした。</strong><br><span class="warn-detail">' + esc(err.message) + '</span>');
+  }finally{
+    if(button){ button.disabled = false; button.textContent = 'リンク'; }
+  }
+}
+
+async function copyPushPairCode(){
+  const code = document.getElementById('pushPairCode')?.textContent?.trim();
+  if(!code || code === '----') return;
+
+  try{
+    await navigator.clipboard.writeText(code);
+    showToast('リンクコードをコピーしました');
+  }catch(err){
+    showToast(`リンクコード: ${code}`);
+  }
+}
+
+async function renamePushDevice(deviceId){
+  const row = document.querySelector(`[data-device="${CSS.escape(deviceId)}"]`);
+  const currentName = row?.querySelector('.push-device-copy b')?.childNodes?.[0]?.textContent?.trim() || '';
+  const next = prompt('端末名を入力してください', currentName);
+  if(next === null) return;
+
+  const name = next.trim().slice(0, 40);
+  if(!name){
+    showToast('端末名を入力してください');
+    return;
+  }
+
+  try{
+    await pushApiFetch('/v2/device/rename', {
+      method:'POST',
+      body:JSON.stringify({ deviceId, name })
+    });
+    await refreshWebPushFoundation();
+    showToast('端末名を変更しました');
+  }catch(err){
+    showWarn('<strong>端末名を変更できませんでした。</strong><br><span class="warn-detail">' + esc(err.message) + '</span>');
+  }
+}
+
+async function removePushDevice(deviceId){
+  const current = getPushDevice();
+  const isCurrent = deviceId === current?.deviceId;
+  const message = isCurrent
+    ? 'この端末のWeb Push登録を解除しますか？'
+    : 'この端末を通知グループから削除しますか？';
+  if(!confirm(message)) return;
+
+  try{
+    await pushApiFetch('/v2/device/remove', {
+      method:'POST',
+      body:JSON.stringify({ deviceId })
+    });
+
+    if(isCurrent){
+      try{
+        const reg = await navigator.serviceWorker.ready;
+        const subscription = await reg.pushManager.getSubscription();
+        if(subscription) await subscription.unsubscribe();
+      }catch(err){}
+      clearPushDevice();
+      drawWebPushFoundation();
+      showToast('この端末のWeb Push登録を解除しました');
+      return;
+    }
+
+    await refreshWebPushFoundation();
+    showToast('端末を削除しました');
+  }catch(err){
+    showWarn('<strong>端末を削除できませんでした。</strong><br><span class="warn-detail">' + esc(err.message) + '</span>');
   }
 }
 
 async function disconnectWebPushFoundation(){
-  const button = document.getElementById('pushDisconnect');
-  if(button){ button.disabled = true; button.textContent = '解除中…'; }
-
-  try{
-    if(getPushDevice() && pushApiConfigured()){
-      try{ await pushApiFetch('/v1/unregister', { method:'POST', body:'{}' }); }
-      catch(err){ console.warn('push unregister failed:', err); }
-    }
-
-    if('serviceWorker' in navigator){
-      const reg = await navigator.serviceWorker.ready;
-      const subscription = await reg.pushManager.getSubscription();
-      if(subscription) await subscription.unsubscribe();
-    }
-
-    clearPushDevice();
-    drawWebPushFoundation();
-    showToast('Web Pushの接続を解除しました');
-  }catch(err){
-    showWarn('<strong>Web Pushの解除に失敗しました。</strong><br><span class="warn-detail">' + esc(err.message) + '</span>');
-  }finally{
-    if(button){ button.disabled = false; button.textContent = '接続解除'; }
-  }
+  const current = getPushDevice();
+  if(!current) return;
+  await removePushDevice(current.deviceId);
 }
 
 
@@ -4290,8 +4666,17 @@ if('serviceWorker' in navigator){
   });
 }
 
+document.getElementById('pushServerSave').addEventListener('click', savePushServer);
 document.getElementById('pushConnect').addEventListener('click', connectWebPushFoundation);
 document.getElementById('pushBgTest').addEventListener('click', testBackgroundWebPush);
+document.getElementById('pushAllTest').addEventListener('click', testAllPushDevices);
+document.getElementById('pushPairCreate').addEventListener('click', createPushPairCode);
+document.getElementById('pushPairCopy').addEventListener('click', copyPushPairCode);
+document.getElementById('pushPairClaim').addEventListener('click', claimPushPairCode);
+document.getElementById('pushPairInput').addEventListener('input', e => {
+  const pos = e.target.selectionStart;
+  e.target.value = normalizedPairCode(e.target.value);
+});
 document.getElementById('pushDisconnect').addEventListener('click', disconnectWebPushFoundation);
 
 document.getElementById('notifyEnable').addEventListener('click', requestScheduleNotifications);
@@ -4524,7 +4909,7 @@ document.getElementById('gsync').addEventListener('click', () => {
    Google Calendar / OAuthの通信処理とは独立して動作する。
    ========================================================== */
 (() => {
-  const APP_VERSION = "1.4.0-a1";
+  const APP_VERSION = "1.4.0-a2";
   const INSTALL_DISMISSED_KEY = "schedule:pwa-install-dismissed";
   let deferredInstallPrompt = null;
   let swRegistration = null;
