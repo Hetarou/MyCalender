@@ -1565,30 +1565,88 @@ const GoogleBackend = {
   label: 'Googleカレンダー',
   token: null,
 
-  /* --- ログイン --- */
-  async loadGis(){
-    if(window.google?.accounts?.oauth2) return;
-    await new Promise((res, rej) => {
+  /* --- ログイン ---
+     iPhone/Safari/PWAではOAuthポップアップを、ユーザーがボタンを押した
+     そのコールスタック内で開始する必要がある。
+     そのためGISスクリプトとTokenClientは事前に準備しておき、
+     ボタン押下後にstorage等のawaitを挟まず requestAccessToken() を呼ぶ。 */
+  tokenClient: null,
+  pendingAuth: null,
+  gisPromise: null,
+
+  loadGis(){
+    if(window.google?.accounts?.oauth2) return Promise.resolve();
+    if(this.gisPromise) return this.gisPromise;
+
+    this.gisPromise = new Promise((res, rej) => {
+      const existing = document.querySelector('script[data-schedule-gis]');
+      if(existing){
+        existing.addEventListener('load', res, { once:true });
+        existing.addEventListener('error', () => rej(new Error(
+          'Googleのログイン用スクリプトを読み込めなかった。ネット接続を確認してください。'
+        )), { once:true });
+        return;
+      }
+
       const el = document.createElement('script');
       el.src = 'https://accounts.google.com/gsi/client';
+      el.async = true;
+      el.defer = true;
+      el.dataset.scheduleGis = '1';
       el.onload = res;
-      el.onerror = () => rej(new Error('Googleのログイン用スクリプトを読み込めなかった。ネットにつながってる？'));
+      el.onerror = () => rej(new Error(
+        'Googleのログイン用スクリプトを読み込めなかった。ネット接続を確認してください。'
+      ));
       document.head.appendChild(el);
     });
+
+    return this.gisPromise;
+  },
+
+  async prepareAuth(){
+    if(!CONFIG.googleClientId) return false;
+    await this.loadGis();
+
+    if(!this.tokenClient){
+      this.tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: CONFIG.googleClientId,
+        scope: CONFIG.scope,
+        callback: response => {
+          const pending = this.pendingAuth;
+          this.pendingAuth = null;
+          if(!pending) return;
+
+          if(response?.access_token) pending.resolve(response);
+          else pending.reject(new Error(
+            response?.error_description || response?.error || 'Googleへのアクセスが許可されませんでした。'
+          ));
+        },
+        error_callback: error => {
+          const pending = this.pendingAuth;
+          this.pendingAuth = null;
+          if(!pending) return;
+
+          const type = error?.type || 'unknown';
+          const messages = {
+            popup_failed_to_open: 'Googleログイン画面を開けませんでした。もう一度「Googleカレンダーとつなぐ」を押してください。',
+            popup_closed: 'Googleログイン画面が閉じられました。',
+            unknown: 'Googleログインを開始できませんでした。'
+          };
+          pending.reject(new Error(messages[type] || `Googleログインに失敗しました（${type}）`));
+        }
+      });
+    }
+    return true;
   },
 
   /* 取得したトークンは保存して使い回す。
-     毎回Googleへ取りに行くと、そのたび画面が出る。
-     トークンは1時間ほど有効なので、その間の再読み込みはやり取りが要らない。
-
-     ※ ブラウザの保存領域に置くので、端末を他人と共有している場合は
-        「接続を解除」で消せるようにしてある（設定から） */
+     GISのアクセストークンは短時間で期限切れになるため、
+     有効期限内だけ再利用する。 */
   async loadToken(){
     try{
       const raw = await medium.get(TOKEN_KEY);
       if(!raw) return false;
       const { token, exp } = JSON.parse(raw);
-      // 切れる2分前からは期限切れ扱いにする（操作の途中で切れるのを防ぐ）
       if(!token || Date.now() > exp - 120000) return false;
       this.token = token;
       return true;
@@ -1598,8 +1656,11 @@ const GoogleBackend = {
   async saveToken(token, sec){
     this.token = token;
     try{
-      await medium.set(TOKEN_KEY, JSON.stringify({ token, exp: Date.now() + sec*1000 }));
-    }catch(e){ /* 保存できなくても、その回は動く */ }
+      await medium.set(TOKEN_KEY, JSON.stringify({
+        token,
+        exp: Date.now() + sec * 1000
+      }));
+    }catch(e){}
   },
 
   async clearToken(){
@@ -1607,25 +1668,53 @@ const GoogleBackend = {
     try{ await medium.set(TOKEN_KEY, ''); }catch(e){}
   },
 
-  async connect(interactive){
+  /* ユーザー操作から直接呼ぶこと。
+     この関数は requestAccessToken() より前に await しない。 */
+  connectInteractive(){
     if(!CONFIG.googleClientId){
-      throw new Error('CONFIG.googleClientId が空。SETUP.md の手順でクライアントIDを入れて。');
+      return Promise.reject(new Error(
+        'CONFIG.googleClientId が空。SETUP.md の手順でクライアントIDを入れてください。'
+      ));
     }
-    // 保存してあるトークンがまだ生きていれば、Googleに聞きに行かない
-    if(!interactive && await this.loadToken()) return;
+    if(!this.tokenClient){
+      return Promise.reject(new Error(
+        'Googleログインの準備中です。数秒待ってからもう一度押してください。'
+      ));
+    }
+    if(this.pendingAuth){
+      return Promise.reject(new Error('Googleログイン処理中です。'));
+    }
 
-    await this.loadGis();
-    const r = await new Promise((res, rej) => {
-      const client = google.accounts.oauth2.initTokenClient({
-        client_id: CONFIG.googleClientId,
-        scope: CONFIG.scope,
-        callback: x => x.access_token ? res(x) : rej(new Error('許可されなかった')),
-        error_callback: e => rej(new Error('ログインに失敗した（' + (e.type || '不明') + '）'))
-      });
-      // prompt:'' … 一度許可していれば画面を出さずに通す
-      client.requestAccessToken({ prompt: interactive ? 'consent' : '' });
+    return new Promise((resolve, reject) => {
+      this.pendingAuth = {
+        resolve: async response => {
+          await this.saveToken(
+            response.access_token,
+            Number(response.expires_in) || 3600
+          );
+          resolve();
+        },
+        reject
+      };
+
+      // iPhoneでは、この呼び出しがclickのユーザー操作から直接到達することが重要。
+      this.tokenClient.requestAccessToken({ prompt: 'consent' });
     });
-    await this.saveToken(r.access_token, Number(r.expires_in) || 3600);
+  },
+
+  /* 自動復帰用。GISのtoken modelでは期限切れ後の完全なsilent refreshを
+     保証できないため、保存済みトークンが有効な場合だけ復帰する。 */
+  async connect(interactive = false){
+    if(interactive) return this.connectInteractive();
+
+    if(!CONFIG.googleClientId){
+      throw new Error(
+        'CONFIG.googleClientId が空。SETUP.md の手順でクライアントIDを入れてください。'
+      );
+    }
+    if(await this.loadToken()) return;
+
+    throw new Error('Googleの認証期限が切れています。もう一度接続してください。');
   },
 
   /* --- APIを叩く --- */
@@ -3965,29 +4054,49 @@ async function useBackend(be){
   handleNotificationUrl();
 }
 
-document.getElementById('gsync').addEventListener('click', async () => {
+document.getElementById('gsync').addEventListener('click', () => {
   if(Backend.name === 'google'){
-    await GoogleBackend.clearToken();          // 保存してある認証も消す
-    await medium.set('cal:backend', 'local');
-    await useBackend(LocalBackend);
-    showWarn('ローカル保存に戻した。Googleカレンダー側の予定はそのまま残ってる。');
+    // 切断側はポップアップ不要なので通常の非同期処理でよい。
+    (async () => {
+      await GoogleBackend.clearToken();
+      await medium.set('cal:backend', 'local');
+      await useBackend(LocalBackend);
+      showWarn('ローカル保存に戻した。Googleカレンダー側の予定はそのまま残ってる。');
+    })().catch(err => {
+      showWarn('<strong>接続を解除できなかった。</strong> ' + esc(err.message));
+    });
     return;
   }
-  try{
-    showWarn('Googleカレンダーにつないでる…');
-    await GoogleBackend.connect(true);
-    await medium.set('cal:backend', 'google');
-    await useBackend(GoogleBackend);
-    lastSync = new Date().toTimeString().slice(0,5);
-    drawSync();
-    showWarn(null);
-  }catch(err){
-    showWarn('<strong>つなげなかった。</strong> ' + esc(err.message));
-  }
+
+  // 重要: connectInteractive() はclickから直接呼ぶ。
+  // iPhoneでユーザー操作が失効するのを避けるため、この前にawaitを挟まない。
+  showWarn('Googleカレンダーにつないでる…');
+
+  GoogleBackend.connectInteractive()
+    .then(async () => {
+      await medium.set('cal:backend', 'google');
+      await useBackend(GoogleBackend);
+      lastSync = new Date().toTimeString().slice(0,5);
+      drawSync();
+      drawNotificationSettings();
+      showWarn(null);
+    })
+    .catch(err => {
+      showWarn('<strong>つなげなかった。</strong> ' + esc(err.message));
+    });
 });
 
 (async function init(){
   initClicks();                      // クリックの受け口は起動時に1回だけ
+
+  // Google Identity Servicesを先に読み込む。
+  // iPhoneでは接続ボタンを押した後にscriptを読み始めると、
+  // OAuthポップアップに必要なユーザー操作が失効しやすいため。
+  if(CONFIG.googleClientId){
+    GoogleBackend.prepareAuth().catch(err => {
+      console.warn('Google login preload failed:', err);
+    });
+  }
 
   const canSave = await probeStorage();
   if(!canSave) showWarn(CANT_SAVE);
@@ -4045,7 +4154,7 @@ document.getElementById('gsync').addEventListener('click', async () => {
    Google Calendar / OAuthの通信処理とは独立して動作する。
    ========================================================== */
 (() => {
-  const APP_VERSION = "1.3.1";
+  const APP_VERSION = "1.3.2";
   const INSTALL_DISMISSED_KEY = "schedule:pwa-install-dismissed";
   let deferredInstallPrompt = null;
   let swRegistration = null;
