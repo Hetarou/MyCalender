@@ -9,13 +9,13 @@
      manifest.json とアイコンが同じ場所に無いと入れられないが、
      無くてもページ自体は普通に動く（機能の追加であって前提ではない） -->
 <link rel="manifest" href="./manifest.json">
-<meta name="theme-color" content="#F4F2ED">
+<meta name="theme-color" content="#F7F8FC">
 
 <!-- iPhone は manifest を見ないので個別に指定する -->
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="color-scheme" content="light">
+<meta name="color-scheme" content="light dark">
 <meta name="apple-mobile-web-app-title" content="schedule">
 <link rel="apple-touch-icon" href="./icon-192.png">
 <link rel="icon" href="./icon-192.png" type="image/png">
@@ -32,28 +32,57 @@
      --done    完了だけ
    種類（カテゴリ）の色には、この2色に近い色を選ばない */
 :root{
-  --paper:#F6F7F9;
-  --card:#FFFFFF;
-  --out:#EEF1F5;
-  --hover:#EEF4FF;
-  --card-hov:#F8FAFD;    /* カードに触れたとき */
-  --ink:#1E2227;
-  --ink-soft:#585F67;
-  --ink-faint:#8A9199;
-  --rule:#D8DEE8;
-  --rule-soft:#E5EAF1;
-  --rule-faint:#EEF1F5;
-  --plan:#1F5FA8;
-  --plan-bg:#E5EDF6;
-  --due:#A03A2A;
-  --due-bg:#F5E4DF;
-  --accent:#2563EB;
-  --accent-bg:#E8F0FF;
-  --done:#2C7A5B;
-  --today-bg:#F2F7FF;
-  --today-hov:#EAF2FF;
-  --today-line:#D7E5FF;
+  /* Phase 6A — Luminous Day semantic foundation */
+  color-scheme:light;
+  --theme-canvas:#F7F8FC;
+  --theme-surface:#FFFFFF;
+  --theme-surface-raised:#FFFFFF;
+  --theme-surface-subtle:#F6F8FD;
+  --theme-hover:#F0F4FF;
+  --theme-text:#151A2B;
+  --theme-text-soft:#59657C;
+  --theme-text-faint:#96A1B5;
+  --theme-border:#DCE3EE;
+  --theme-border-soft:#E7ECF4;
+  --theme-border-faint:#F0F3F8;
+  --theme-accent:#785BFF;
+  --theme-accent-2:#4FD6FF;
+  --theme-accent-soft:rgba(120,91,255,.11);
+  --theme-accent-gradient:linear-gradient(135deg,#8B68FF 0%,#7767FF 46%,#4FD8FF 100%);
+  --theme-accent-glow:0 12px 30px -14px rgba(120,91,255,.58),0 9px 24px -16px rgba(79,216,255,.72);
+  --theme-shadow-soft:0 8px 28px rgba(42,51,78,.08);
+  --theme-shadow-raised:0 16px 44px rgba(42,51,78,.12);
+  --theme-focus:0 0 0 3px rgba(120,91,255,.18);
+  --theme-ease:cubic-bezier(.22,1,.36,1);
+
+  /* Existing component tokens stay as compatibility aliases.
+     Phase 6A changes the foundation without rewriting feature code. */
+  --paper:var(--theme-canvas);
+  --card:var(--theme-surface);
+  --out:var(--theme-surface-subtle);
+  --hover:var(--theme-hover);
+  --card-hov:var(--theme-surface-subtle);
+  --ink:var(--theme-text);
+  --ink-soft:var(--theme-text-soft);
+  --ink-faint:var(--theme-text-faint);
+  --rule:var(--theme-border);
+  --rule-soft:var(--theme-border-soft);
+  --rule-faint:var(--theme-border-faint);
+  --plan:#3F7FEF;
+  --plan-bg:#EAF1FF;
+  --due:#D85772;
+  --due-bg:#FCEBF0;
+  --accent:var(--theme-accent);
+  --accent-bg:var(--theme-accent-soft);
+  --accent-gradient:var(--theme-accent-gradient);
+  --accent-glow:var(--theme-accent-glow);
+  --done:#35B978;
+  --today-bg:rgba(120,91,255,.055);
+  --today-hov:rgba(120,91,255,.085);
+  --today-line:rgba(120,91,255,.20);
   --on-fill:#FFFFFF;
+  --shadow:var(--theme-shadow-raised);
+  --ease:var(--theme-ease);
 
   --display:"Hiragino Mincho ProN","Yu Mincho",YuMincho,"Noto Serif JP",serif;
   --body:"Hiragino Sans","Yu Gothic",YuGothic,"Noto Sans JP",system-ui,sans-serif;
@@ -65,32 +94,55 @@
   --radius-pill:999px;   /* 丸ボタン・バッジ */
 }
 
-/* テーマ「夜」。:root の値を上書きする。
-   色の役割は紙と共通（--accent＝いま・今日・選択中、--done＝完了）。
-   役割まで変えると、テーマを切り替えるたび意味を覚え直すことになる */
+/* Phase 6A — Quiet Night.
+   Component meaning is identical to Luminous Day; only semantic tokens change. */
 [data-theme="night"]{
-  --paper:#0D1117;
-  --card:#161C24;
-  --card-hov:#1C242E;
-  --out:#10151B;
-  --hover:#1C242E;
-  --ink:#DCE3EA;
-  --ink-soft:#8B98A6;
-  --ink-faint:#5C6773;
-  --rule:#28313C;
-  --rule-soft:#1E252E;
-  --rule-faint:#181E25;
-  --plan:#58A6FF;
-  --plan-bg:#16324D;
-  --due:#E5786A;
-  --due-bg:#3A1D18;
-  --accent:#22D3EE;
-  --accent-bg:#0E3138;
-  --done:#4ADE80;
-  --today-bg:#141B23;
-  --today-hov:#1A222B;
-  --today-line:#25313C;
-  --on-fill:#0D1117;
+  color-scheme:dark;
+  --theme-canvas:#080E1D;
+  --theme-surface:#101827;
+  --theme-surface-raised:#131D30;
+  --theme-surface-subtle:#0D1524;
+  --theme-hover:#17233A;
+  --theme-text:#F3F5FB;
+  --theme-text-soft:#A7B2C7;
+  --theme-text-faint:#6F7C95;
+  --theme-border:#26344C;
+  --theme-border-soft:#1E2A41;
+  --theme-border-faint:#172238;
+  --theme-accent:#8B68FF;
+  --theme-accent-2:#48D7FF;
+  --theme-accent-soft:rgba(139,104,255,.16);
+  --theme-accent-gradient:linear-gradient(135deg,#916BFF 0%,#796AFF 45%,#49D8FF 100%);
+  --theme-accent-glow:0 13px 34px -13px rgba(128,91,255,.72),0 10px 30px -16px rgba(73,216,255,.62);
+  --theme-shadow-soft:0 10px 28px rgba(0,0,0,.24);
+  --theme-shadow-raised:0 18px 52px rgba(0,0,0,.40);
+  --theme-focus:0 0 0 3px rgba(139,104,255,.24);
+
+  --paper:var(--theme-canvas);
+  --card:var(--theme-surface);
+  --out:var(--theme-surface-subtle);
+  --hover:var(--theme-hover);
+  --card-hov:var(--theme-hover);
+  --ink:var(--theme-text);
+  --ink-soft:var(--theme-text-soft);
+  --ink-faint:var(--theme-text-faint);
+  --rule:var(--theme-border);
+  --rule-soft:var(--theme-border-soft);
+  --rule-faint:var(--theme-border-faint);
+  --plan:#6396FF;
+  --plan-bg:#172B50;
+  --due:#FF738D;
+  --due-bg:#3A1D29;
+  --accent:var(--theme-accent);
+  --accent-bg:var(--theme-accent-soft);
+  --accent-gradient:var(--theme-accent-gradient);
+  --accent-glow:var(--theme-accent-glow);
+  --done:#49CF8D;
+  --today-bg:rgba(139,104,255,.075);
+  --today-hov:rgba(139,104,255,.11);
+  --today-line:rgba(139,104,255,.22);
+  --on-fill:#FFFFFF;
+  --shadow:var(--theme-shadow-raised);
 }
 
 *{box-sizing:border-box;margin:0;padding:0}
@@ -108,7 +160,7 @@ button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
    ブラウザ標準の [hidden]{display:none} は、自分で書いた display 指定
    （.row{display:grid} など）に負けるので、ここで明示しておく */
 [hidden]{display:none!important}
-:focus-visible{outline:1px solid var(--accent);outline-offset:2px}
+:focus-visible{outline:2px solid var(--theme-accent-2);outline-offset:2px;box-shadow:var(--theme-focus)}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 
 .app{
@@ -653,8 +705,7 @@ dialog::backdrop{background:rgba(20,33,43,.42)}
 /* ==========================================================
    2026 UI refresh — responsive shell and tactile interactions
    ========================================================== */
-:root{--sidebar:208px;--topbar:72px;--bottom-nav:68px;--shadow:0 16px 40px rgba(30,34,39,.10)}
-[data-theme="night"]{--shadow:0 18px 44px rgba(0,0,0,.32)}
+:root{--sidebar:208px;--topbar:72px;--bottom-nav:68px}
 .visually-hidden{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
 .app-shell{min-height:100%;display:grid;grid-template-columns:var(--sidebar) minmax(0,1fr)}
 .side-nav{position:sticky;top:0;height:100dvh;padding:22px 14px calc(18px + env(safe-area-inset-bottom));background:var(--card);border-right:1px solid var(--rule);display:flex;flex-direction:column;z-index:40}
@@ -690,7 +741,7 @@ dialog::backdrop{background:rgba(20,33,43,.42)}
 .tgroup.today{margin-top:0;background:var(--today-bg);border:1px solid var(--today-line);padding:4px 15px 12px}.tgroup{padding-top:14px}.trow{border-radius:8px;padding:12px 6px;transition:background .14s,transform .14s,opacity .22s}.trow:hover{background:var(--card-hov)}.tgroup.overdue .trow{background:color-mix(in srgb,var(--paper) 72%,var(--card))}.tgroup.overdue .trow:hover{background:var(--card-hov)}
 .tcheck{width:22px;height:22px;transition:background .15s,border-color .15s,transform .15s}.trow.checking .ttitle{text-decoration:line-through;text-decoration-thickness:1px}.tpick{width:28px;height:28px}.just-added{animation:addedPulse .9s ease-out}@keyframes addedPulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 38%,transparent)}45%{box-shadow:0 0 0 7px transparent}100%{box-shadow:none}}
 .settings-page{max-width:760px;margin:0 auto;padding:8px 0 28px}.settings-head{padding:10px 4px 22px}.settings-head h2{font-size:28px;letter-spacing:-.02em}.settings-head>p:last-child{color:var(--ink-soft);margin-top:4px}.eyebrow{font-family:var(--data);font-size:12px;letter-spacing:.18em;color:var(--accent);margin-bottom:3px}.settings-section{padding:20px 2px;border-bottom:1px solid var(--rule-soft)}.settings-section>h3,.settings-title-row h3,.settings-link-row h3{font-size:15px}.settings-desc{font-size:13px;color:var(--ink-soft);margin-top:2px}.settings-title-row,.settings-link-row{display:flex;align-items:flex-start;justify-content:space-between;gap:18px}.status-dot{width:10px;height:10px;border-radius:50%;background:var(--ink-faint);margin-top:7px}.status-dot.on{background:var(--done)}.sync-card .sline{margin-top:13px}.sbtn{min-height:40px}.sbtn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-fill)}
-.theme-choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:14px}.theme-card{display:flex;align-items:center;gap:13px;padding:12px;border:1px solid var(--rule);border-radius:12px;text-align:left;background:var(--card);transition:border-color .14s,background .14s,transform .08s}.theme-card:hover{border-color:var(--ink-soft)}.theme-card[aria-pressed="true"]{border:2px solid var(--accent);padding:11px;background:var(--accent-bg)}.theme-card b,.theme-card small{display:block}.theme-card small{font-size:12px;color:var(--ink-soft);margin-top:2px}.theme-preview{width:62px;height:44px;border-radius:8px;padding:6px;display:flex;flex-direction:column;gap:4px;flex:0 0 auto;border:1px solid var(--rule)}.theme-preview i{display:block;height:6px;border-radius:3px}.paper-preview{background:rgb(246,247,249)}.paper-preview i{background:rgb(220,231,248)}.paper-preview i:nth-child(2){width:72%;background:rgb(233,215,242)}.paper-preview i:nth-child(3){width:55%;background:rgb(241,224,203)}.night-preview{background:rgb(13,17,23)}.night-preview i{background:rgb(25,66,90)}.night-preview i:nth-child(2){width:72%;background:rgb(60,40,80)}.night-preview i:nth-child(3){width:55%;background:rgb(71,57,28)}
+.theme-choices{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:14px}.theme-card{display:flex;align-items:center;gap:12px;min-width:0;padding:12px;border:1px solid var(--rule);border-radius:14px;text-align:left;background:var(--card);transition:background .2s var(--ease),color .2s var(--ease),border-color .2s var(--ease),box-shadow .2s var(--ease),transform .08s}.theme-card:hover{border-color:color-mix(in srgb,var(--accent) 48%,var(--rule));box-shadow:var(--theme-shadow-soft)}.theme-card[aria-pressed="true"]{border-color:transparent;background:var(--accent-gradient);color:var(--on-fill);box-shadow:var(--accent-glow)}.theme-card b,.theme-card small{display:block}.theme-card b{line-height:1.25}.theme-card small{font-size:11.5px;color:var(--ink-soft);margin-top:3px;line-height:1.4}.theme-card[aria-pressed="true"] small{color:rgba(255,255,255,.82)}.theme-preview{width:58px;height:42px;border-radius:10px;padding:6px;display:flex;flex-direction:column;gap:4px;flex:0 0 auto;border:1px solid color-mix(in srgb,var(--ink) 13%,transparent);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}.theme-preview i{display:block;height:6px;border-radius:3px}.luminous-preview{background:#F7F8FC}.luminous-preview i{background:#DDE5FF}.luminous-preview i:nth-child(2){width:72%;background:#E5DAFF}.luminous-preview i:nth-child(3){width:55%;background:#D7F6FF}.quiet-preview{background:#080E1D}.quiet-preview i{background:#293762}.quiet-preview i:nth-child(2){width:72%;background:#3A2C64}.quiet-preview i:nth-child(3){width:55%;background:#164A61}.system-preview{position:relative;overflow:hidden;background:linear-gradient(90deg,#F7F8FC 0 50%,#080E1D 50%)}.system-preview i{background:linear-gradient(90deg,#DDE5FF 0 50%,#293762 50%)}.system-preview i:nth-child(2){width:72%;background:linear-gradient(90deg,#E5DAFF 0 69%,#3A2C64 69%)}.system-preview i:nth-child(3){width:55%;background:linear-gradient(90deg,#D7F6FF 0 91%,#164A61 91%)}.theme-card[aria-pressed="true"] .theme-preview{border-color:rgba(255,255,255,.42)}
 .time-range-setting{display:flex;align-items:end;gap:10px;margin-top:12px}.time-range-setting .field{margin:0;min-width:120px}.settings-details{padding-left:0;padding-right:0}.settings-details summary{list-style:none;display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:0 2px}.settings-details summary::-webkit-details-marker{display:none}.settings-details summary b,.settings-details summary small{display:block}.settings-details summary small{font-size:12px;color:var(--ink-soft);font-weight:400;margin-top:2px}.summary-arrow{font-size:24px;color:var(--ink-faint);transition:transform .16s}.settings-details[open] .summary-arrow{transform:rotate(90deg)}.details-body{padding-top:16px}.settings-link-row{align-items:center}
 .bottom-nav{display:none}
 .sheet{box-shadow:var(--shadow)}.editor-dialog{inset:0 0 0 auto;margin:0;width:min(480px,calc(100vw - 24px));height:100dvh;max-height:none}.editor-dialog .editor-sheet{width:100%;height:100%;max-height:100%;overflow:auto;border-radius:18px 0 0 18px;padding:0 24px 92px}.sheet-head{position:sticky;top:0;z-index:4;display:flex;align-items:center;justify-content:space-between;padding:20px 0 14px;background:var(--card);border-bottom:1px solid var(--rule-faint);margin-bottom:18px}.sheet-head h3{margin:0;font-family:var(--body);font-size:20px;letter-spacing:-.01em}.sheet-close{width:40px;height:40px;border-radius:10px;background:var(--paper);font-size:20px}.form-section{padding:3px 0 7px}.form-section+.form-section{border-top:1px solid var(--rule-faint);padding-top:18px}.form-section-title{font-family:var(--data);font-size:12px;letter-spacing:.16em;color:var(--ink-faint);margin-bottom:10px}.sheet-actions{position:sticky;bottom:-92px;margin:20px -24px -92px;padding:14px 24px calc(14px + env(safe-area-inset-bottom));background:var(--card);border-top:1px solid var(--rule);z-index:5}.editor-dialog[open]{animation:sheetIn .2s ease-out}@keyframes sheetIn{from{transform:translateX(20px);opacity:.75}to{transform:none;opacity:1}}
@@ -1262,13 +1313,17 @@ dialog::backdrop{background:rgba(20,33,43,.42)}
           <h3>外観</h3>
           <p class="settings-desc">選択するとすぐに画面へ反映されます。</p>
           <div class="theme-choices" id="themeChoices">
-            <button type="button" class="theme-card" data-theme-choice="paper" aria-pressed="true">
-              <span class="theme-preview paper-preview"><i></i><i></i><i></i></span>
-              <span><b>Paper</b><small>明るく落ち着いた表示</small></span>
+            <button type="button" class="theme-card" data-theme-choice="system" aria-pressed="true">
+              <span class="theme-preview system-preview" aria-hidden="true"><i></i><i></i><i></i></span>
+              <span><b>System</b><small>端末の外観に合わせる</small></span>
             </button>
-            <button type="button" class="theme-card" data-theme-choice="night" aria-pressed="false">
-              <span class="theme-preview night-preview"><i></i><i></i><i></i></span>
-              <span><b>Night</b><small>暗所でも見やすい表示</small></span>
+            <button type="button" class="theme-card" data-theme-choice="light" aria-pressed="false">
+              <span class="theme-preview luminous-preview" aria-hidden="true"><i></i><i></i><i></i></span>
+              <span><b>Luminous Day</b><small>Light · 明るく透き通る昼</small></span>
+            </button>
+            <button type="button" class="theme-card" data-theme-choice="dark" aria-pressed="false">
+              <span class="theme-preview quiet-preview" aria-hidden="true"><i></i><i></i><i></i></span>
+              <span><b>Quiet Night</b><small>Dark · 深く静かな夜</small></span>
             </button>
           </div>
           <label class="visually-hidden" for="fTheme">テーマ</label>
@@ -1792,16 +1847,26 @@ const CONFIG = {
   ],
 };
 
-/* 選べるテーマ。dark は「地が暗いか」。
-   種類の色から背景を作る向きがこれで決まる（明るい地なら白へ、暗い地なら黒へ寄せる） */
+/* Phase 6A: theme preference and resolved visual theme are separated.
+   - preference: system / light / dark (saved in the existing prefs object)
+   - resolved theme: Luminous Day / Quiet Night (used by component tokens)
+   Legacy paper/night values are migrated in memory so Phase 5 data remains readable. */
 const THEMES = [
-  { id:'paper', name:'紙（明るい）', dark:false },
-  { id:'night', name:'夜（暗い）',   dark:true  },
+  { id:'system', name:'システム',       dark:null  },
+  { id:'light',  name:'Luminous Day', dark:false },
+  { id:'dark',   name:'Quiet Night',  dark:true  },
 ];
+const systemThemeQuery = window.matchMedia('(prefers-color-scheme: dark)');
 
-/* 画面に関する設定。保存先に保存され、端末をまたいで揃う */
+function normalizeThemePreference(value){
+  if(value === 'paper') return 'light';
+  if(value === 'night') return 'dark';
+  return THEMES.some(t => t.id === value) ? value : 'system';
+}
+
+/* 画面に関する設定。保存先はPhase 5と同じ prefs のまま。 */
 let prefs = {
-  theme:'paper', dayStart:0, dayEnd:24, periods:null, ivyCarrySeen:'',
+  theme:'system', dayStart:0, dayEnd:24, periods:null, ivyCarrySeen:'',
   notifyEnabled:false,
   eventReminderMinutes:10,
   taskSameDayNotify:true,
@@ -1815,12 +1880,40 @@ let prefs = {
   googleReminderEnabled:false
 };
 
-const themeOf = () => THEMES.find(t => t.id === prefs.theme) || THEMES[0];
+const themeOf = () => {
+  const preference = normalizeThemePreference(prefs.theme);
+  const dark = preference === 'system' ? systemThemeQuery.matches : preference === 'dark';
+  return {
+    id: dark ? 'night' : 'paper',
+    preference,
+    dark,
+    name: dark ? 'Quiet Night' : 'Luminous Day'
+  };
+};
 
 function applyTheme(){
-  document.documentElement.dataset.theme = prefs.theme;
+  prefs.theme = normalizeThemePreference(prefs.theme);
+  const resolved = themeOf();
+  const root = document.documentElement;
+  root.dataset.theme = resolved.id;
+  root.dataset.themeMode = resolved.preference;
+  root.style.colorScheme = resolved.dark ? 'dark' : 'light';
+
   const meta = document.querySelector('meta[name="theme-color"]');
-  if(meta) meta.setAttribute('content', themeOf().dark ? '#0D1117' : '#F6F7F9');
+  if(meta) meta.setAttribute('content', resolved.dark ? '#080E1D' : '#F7F8FC');
+}
+
+/* System selected: follow OS changes immediately, without touching saved data. */
+function handleSystemThemeChange(){
+  if(normalizeThemePreference(prefs.theme) !== 'system') return;
+  applyTheme();
+  if(typeof buildCatPicks === 'function') buildCatPicks();
+  if(typeof render === 'function') render();
+}
+if(typeof systemThemeQuery.addEventListener === 'function'){
+  systemThemeQuery.addEventListener('change', handleSystemThemeChange);
+}else if(typeof systemThemeQuery.addListener === 'function'){
+  systemThemeQuery.addListener(handleSystemThemeChange);
 }
 
 /* 未分類のときの色 */
@@ -5733,7 +5826,7 @@ document.getElementById('gsync').addEventListener('click', () => {
    Google Calendar / OAuthの通信処理とは独立して動作する。
    ========================================================== */
 (() => {
-  const APP_VERSION = "1.5.0";
+  const APP_VERSION = "1.6.0";
   const INSTALL_DISMISSED_KEY = "schedule:pwa-install-dismissed";
   let deferredInstallPrompt = null;
   let swRegistration = null;
